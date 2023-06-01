@@ -9,7 +9,7 @@ description = "Read and write Phase Plant presets"
 license = "MIT or Apache-2.0"
 homepage = "https://github.com/softdevca/synthahol-phase-plant"
 repository = "https://github.com/softdevca/synthahol-phase-plant"
-keywords = ["audio", "synth", "patch", "preset", "phaseplant", "kilohearts"]
+keywords = ["audio", "synth", "patch", "preset", "phaseplant"]
 
 # Publish to crates.io
 publish = true
