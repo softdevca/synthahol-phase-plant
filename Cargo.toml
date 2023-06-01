@@ -11,8 +11,8 @@ homepage = "https://github.com/softdevca/synthahol-phase-plant"
 repository = "https://github.com/softdevca/synthahol-phase-plant"
 keywords = ["audio", "synth", "patch", "preset", "phaseplant", "kilohearts"]
 
-# Prevent accidentally publishing to crates.io
-publish = false
+# Publish to crates.io
+publish = true
 
 [dependencies]
 base64 = "0.21"
