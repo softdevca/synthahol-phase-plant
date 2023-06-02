@@ -637,7 +637,7 @@ impl Preset {
             let band_limit = reader.read_f32()?;
             if !mode.is_blank() {
                 trace!(
-                    "generator: band_limit {band_limit}, pos {}",
+                    "generator: band limit {band_limit}, pos {}",
                     reader.stream_position()? - 4
                 );
             }

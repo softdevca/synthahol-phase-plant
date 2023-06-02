@@ -1,6 +1,5 @@
 //! [Phase Plant](https://kilohearts.com/products/phase_plant) is a virtual
-//! synth by Kilohearts. It stores presets in a proprietary and undocumented
-//! binary format.
+//! synth by Kilohearts. It stores presets in a proprietary binary format.
 //!
 //! Phase Plant presets can be combined into a bank using the
 //! [`kibank`](https://crates.io/crates/kibank) application and library.
@@ -43,9 +42,6 @@ mod snapin;
 mod text;
 mod unison;
 mod version;
-
-// const SYNTH_NAME: &str  = "Phase Plant";
-// const FILENAME_EXTENSION: &str = "phaseplant";
 
 pub const LANE_COUNT: usize = 3;
 

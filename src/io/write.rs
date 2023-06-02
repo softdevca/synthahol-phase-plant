@@ -314,7 +314,7 @@ impl Preset {
                 .get(modulation_index)
                 .unwrap_or(&default_modulation);
             writer.write_u32(modulation.source.id())?;
-            writer.write_u32(modulation.destination.id())?;
+            writer.write_u32(modulation.target.id())?;
             writer.write_f32(modulation.amount.value)?;
         }
 

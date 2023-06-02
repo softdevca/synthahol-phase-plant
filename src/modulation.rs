@@ -1,24 +1,5 @@
 //! Modulation routes control and audio signals.
 
-/* FIXME: NOTES FROM ANDERS: REMOVE
-For sources, the lower bits are just the index of the module
-Uh, shifted << 4
-🙄
-So the audio rate modulation output source of module 0 is 0x8000, 1 is 0x8010, and so on
-
-They're separate
-Audio rate targets follow the same scheme, but also uses the 4 lowest bits to specify what in the module is targeted
-0: frequency
-1: pitch
-2: phase
-3: ring
-4: cutoff
-5: q
-6: drive
-7: aux
-8: harmonic
-(I'm in no way saying this is a fantastic data structure. It's just how things ended up. :D)
- */
 use std::fmt::{Display, Formatter};
 
 use strum_macros::Display;
@@ -30,11 +11,14 @@ use super::*;
 /// How many total macro connections that link a control to a parameter.
 pub const MODULATIONS_MAX: usize = 100;
 
-// type LaneId = u8;
-// type ParameterId = u8;
-type ModuleId = u16;
 type SourceId = u16;
 type TargetId = u16;
+
+type CategoryId = u16;
+type ModuleId = u16;
+type ParameterId = u16;
+
+type LaneId = u8;
 
 #[derive(Clone, Copy, Debug, Display, PartialEq)]
 pub enum RateMode {
@@ -72,16 +56,16 @@ impl RateMode {
 pub struct Modulation {
     pub enabled: bool,
     pub source: ModulationSource,
-    pub destination: ModulationTarget,
+    pub target: ModulationTarget,
     pub amount: Ratio,
     pub curve: Ratio,
 }
 
 impl Modulation {
-    pub fn new(source: ModulationSource, destination: ModulationTarget, amount: Ratio) -> Self {
+    pub fn new(source: ModulationSource, target: ModulationTarget, amount: Ratio) -> Self {
         Self {
             source,
-            destination,
+            target,
             amount,
             ..Default::default()
         }
@@ -93,7 +77,7 @@ impl Default for Modulation {
         Self {
             enabled: true,
             source: Default::default(),
-            destination: Default::default(),
+            target: Default::default(),
             amount: Ratio::zero(),
             curve: Ratio::zero(),
         }
@@ -107,7 +91,7 @@ impl Display for Modulation {
         let msg = format!(
             "{} → {} {}",
             self.source,
-            self.destination,
+            self.target,
             modulation_percent_fmt.with(self.amount)
         );
         f.write_str(&msg)?;
@@ -123,22 +107,29 @@ impl Display for Modulation {
 // Source
 //
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ModulationSource {
     AudioRate {
         module_id: ModuleId,
-        parameter_id: u8,
+        parameter_id: ParameterId,
     },
-    Blank,
+    MacroControl(u8),
     Unknown {
-        module_id: ModuleId,
+        category_id: CategoryId,
         source_id: SourceId,
+
+        /// Why it is unknown and not recognized.
+        reason: Option<String>,
     },
 }
 
 impl Default for ModulationSource {
     fn default() -> Self {
-        Self::Blank
+        ModulationSource::Unknown {
+            category_id: Self::LOCAL_CATEGORY_ID,
+            source_id: 0,
+            reason: None,
+        }
     }
 }
 
@@ -151,28 +142,35 @@ impl Display for ModulationSource {
                 module_id,
                 parameter_id,
             } => format!("Audio rate module {module_id} parameter {parameter_id}"),
-            Blank => "Blank".to_string(),
             // Generator { id, target } => format!(
             //     "Generator {:0x} {}",
             //     id + 1,
             //     target.to_string().to_ascii_lowercase()
             // ),
-            // MacroControl(id) => format!("Macro {}", id + 1),
+            MacroControl(id) => format!("Macro {}", id + 1),
             // ModulatorDepth(id) => format!("Modulator {} depth", id + 1),
             // Modulator { modulator_id, parameter_id } => format!("Modulator {}, parameter {}", modulator_id + 1, parameter_id + 1),
             // ModWheel => "Mod Wheel".to_owned(),
             // Snapin { position, target_id } => format!("Snapin {position}, target {target_id}"),
             Unknown {
-                module_id,
+                category_id,
                 source_id,
-            } => format!("Module {module_id:#x} source {source_id:#x}"),
+                reason,
+            } => {
+                let msg = format!("Category {category_id:#x} source {source_id:#x}");
+                if let Some(reason) = reason {
+                    format!("{msg} ({reason})")
+                } else {
+                    msg
+                }
+            }
         };
         f.write_str(&msg)
     }
 }
 
 impl ModulationSource {
-    const LOCAL_MODULE_ID: ModuleId = 0xFFFF;
+    const LOCAL_CATEGORY_ID: CategoryId = 0xFFFF;
 
     // In order of specifier.
     // const MACRO_CONTROL_START: u16 = 0;
@@ -186,22 +184,23 @@ impl ModulationSource {
         use ModulationSource::*;
 
         if let Unknown {
-            module_id,
+            category_id,
             source_id,
+            reason: _,
         } = self
         {
-            return ((*module_id as u32) << 16) | (*source_id as u32);
+            return ((*category_id as u32) << 16) | (*source_id as u32);
         }
 
         let source_id = match self {
             AudioRate {
                 module_id,
                 parameter_id,
-            } => module_id << 4 | (*parameter_id as u16),
-            Blank => 0,
+            } => RateMode::Audio.add_id(module_id << 4 | (*parameter_id as u16)),
+            MacroControl(id) => RateMode::Control.add_id(*id as u16),
             Unknown { .. } => unreachable!(),
         };
-        (source_id as u32) << 16 | ModulationSource::LOCAL_MODULE_ID as u32
+        (source_id as u32) << 16 | ModulationSource::LOCAL_CATEGORY_ID as u32
     }
 }
 
@@ -209,23 +208,40 @@ impl From<u32> for ModulationSource {
     fn from(id: u32) -> Self {
         use ModulationSource::*;
 
-        // let (rate_mode, source_id) = RateMode::split_id((id >> 16) as u16);
-        let source_id = (id >> 16) as u16;
+        let category_id = (id & 0xFFFF) as CategoryId;
 
-        let module_id = (id & 0xFFFF) as u16;
-        if module_id == Self::LOCAL_MODULE_ID {
-            match source_id {
-                0 => Blank,
-                // TODO: More targets
-                _ => Unknown {
-                    module_id,
-                    source_id,
+        // Split the rate mode from the ID then the module and parameters
+        // from that
+        let source_id = (id >> 16) as SourceId;
+        let (rate_mode, part_id) = RateMode::split_id(source_id);
+
+        if category_id == Self::LOCAL_CATEGORY_ID {
+            match rate_mode {
+                RateMode::Audio => {
+                    let module_id = part_id >> 4;
+                    let parameter_id = (part_id & 0x000F) as ParameterId;
+                    // println!("MODULE {module_id:#x} PARAMETER {parameter_id:#x}");
+                    AudioRate {
+                        module_id,
+                        parameter_id,
+                    }
+                }
+                RateMode::Control => match part_id {
+                    0..=7 => MacroControl(part_id as u8),
+                    _ => Unknown {
+                        category_id,
+                        source_id: part_id,
+                        reason: Some(
+                            "Control rate source {part_id:#x} is not recognized.".to_owned(),
+                        ),
+                    },
                 },
             }
         } else {
             Unknown {
-                module_id,
+                category_id,
                 source_id,
+                reason: Some("Unknown category {category_id:#x}.".to_owned()),
             }
         }
     }
@@ -235,25 +251,25 @@ impl From<u32> for ModulationSource {
 // Target
 //
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ModulationTarget {
     Blank,
     Host {
-        target_id: TargetId,
+        parameter: HostParameter,
         rate_mode: RateMode,
     },
     Modulation {
-        target_id: TargetId,
+        parameter_id: TargetId,
         rate_mode: RateMode,
     },
     Snapin {
         snapin_id: u16,
-        target_id: TargetId,
+        parameter_id: TargetId,
         rate_mode: RateMode,
     },
     Unknown {
         module_id: ModuleId,
-        target_id: TargetId,
+        parameter_id: TargetId,
         rate_mode: RateMode,
     },
 }
@@ -271,14 +287,17 @@ impl Display for ModulationTarget {
         let msg = match self {
             Blank => "Blank".to_owned(),
             Host {
-                target_id,
+                parameter: target,
                 rate_mode,
-            } => format!(
-                "Host {} target {target_id:#x}",
-                rate_mode.to_string().to_lowercase()
-            ),
+            } => {
+                format!(
+                    "Host {} target {target}",
+                    rate_mode.to_string().to_lowercase()
+                )
+                // Lane { lane_id, parameter } => format!("Lane {} {}", lane_id + 1, parameter.to_string().to_lowercase()),
+            }
             Modulation {
-                target_id,
+                parameter_id: target_id,
                 rate_mode,
             } => format!(
                 "Modulation {} target {target_id:#x}",
@@ -286,7 +305,7 @@ impl Display for ModulationTarget {
             ),
             Snapin {
                 snapin_id,
-                target_id,
+                parameter_id: target_id,
                 rate_mode,
             } => format!(
                 "Snapin {snapin_id:#x} {} target {target_id:#x}",
@@ -294,7 +313,7 @@ impl Display for ModulationTarget {
             ),
             Unknown {
                 module_id,
-                target_id,
+                parameter_id: target_id,
                 rate_mode,
             } => format!(
                 "Module {module_id:#x} {} target {target_id:#x}",
@@ -306,33 +325,38 @@ impl Display for ModulationTarget {
 }
 
 impl ModulationTarget {
-    const HOST_MODULE_ID: ModuleId = 0xFFFF;
-    const MODULATION_MODULE_ID: ModuleId = 0xFFFD;
+    const HOST_CATEGORY_ID: CategoryId = 0xFFFF;
+    const MODULATION_CATEGORY_ID: CategoryId = 0xFFFD;
 
     // Used internally by Phase Plant, should never be seen in a file.
     // Documented here in case it is encountered.
-    const _PARENT_MODULE_ID: ModuleId = 0xFFFE;
+    const _PARENT_CATEGORY_ID: CategoryId = 0xFFFE;
+
+    // TODO Might be +/- up to 3
+    const LANE_START: SourceId = 0x019d;
+    const LANE_SIZE: u16 = 5;
+    const LANE_END: SourceId = Self::LANE_START + (Self::LANE_SIZE * crate::Lane::COUNT as u16) - 1;
 
     pub fn id(&self) -> u32 {
         use ModulationTarget::*;
         match self {
             Blank => 0,
             Host {
-                target_id,
+                parameter: target,
                 rate_mode,
-            } => (rate_mode.add_id(*target_id) as u32) << 16 | Self::HOST_MODULE_ID as u32,
+            } => (rate_mode.add_id(target.id()) as u32) << 16 | Self::HOST_CATEGORY_ID as u32,
             Modulation {
-                target_id,
+                parameter_id: target_id,
                 rate_mode,
-            } => (rate_mode.add_id(*target_id) as u32) << 16 | Self::MODULATION_MODULE_ID as u32,
+            } => (rate_mode.add_id(*target_id) as u32) << 16 | Self::MODULATION_CATEGORY_ID as u32,
             Snapin {
                 snapin_id,
-                target_id,
+                parameter_id: target_id,
                 rate_mode,
             } => (rate_mode.add_id(*target_id) as u32) << 16 | *snapin_id as u32,
             Unknown {
                 module_id,
-                target_id,
+                parameter_id: target_id,
                 rate_mode,
             } => (rate_mode.add_id(*target_id) as u32) << 16 | *module_id as u32,
         }
@@ -344,31 +368,54 @@ impl From<u32> for ModulationTarget {
         use ModulationTarget::*;
 
         let (rate_mode, target_id) = RateMode::split_id((id >> 16) as u16);
-        // let target_id = (id >> 16) as u16;
 
         let module_id = (id & 0xFFFF) as u16;
-        if module_id == Self::MODULATION_MODULE_ID {
+        if module_id == Self::HOST_CATEGORY_ID {
+            println!(
+                "TARGET ID {:#x} vs LANE {:#x} to {:#x}",
+                target_id,
+                Self::LANE_START,
+                Self::LANE_END
+            );
+            match target_id {
+                0 => Blank,
+                Self::LANE_START..=Self::LANE_END => {
+                    use HostParameter::*;
+
+                    let lane_id = ((target_id - Self::LANE_START) / Self::LANE_SIZE) as LaneId;
+                    let parameter_id = (target_id - Self::LANE_START) % Self::LANE_SIZE;
+                    let parameter = match parameter_id {
+                        0 => LaneMix(lane_id),
+                        1 => LaneGain(lane_id),
+                        _ => Unknown {
+                            target_id,
+                            reason: Some(format!("Lane parameter {parameter_id} not recognized")),
+                        },
+                    };
+                    Host {
+                        parameter,
+                        rate_mode,
+                    }
+                }
+                _ => Unknown {
+                    module_id,
+                    parameter_id: target_id,
+                    rate_mode,
+                },
+            }
+        } else if module_id == Self::MODULATION_CATEGORY_ID {
             // match target_id {
             //     _ => Unknown {
             Unknown {
                 module_id,
-                target_id,
+                parameter_id: target_id,
                 rate_mode,
             }
-            // }
-        } else if module_id == Self::HOST_MODULE_ID {
-            match target_id {
-                0 => Blank,
-                _ => Unknown {
-                    module_id,
-                    target_id,
-                    rate_mode,
-                },
-            }
+        // }
         } else {
             Snapin {
                 snapin_id: module_id,
-                target_id,
+                parameter_id: target_id,
                 rate_mode,
             }
         }
@@ -388,9 +435,33 @@ pub enum AudioRateTargetParameter {
     Harmonic,
 }
 
+#[derive(Clone, Debug, Display, PartialEq)]
+pub enum HostParameter {
+    LaneGain(LaneId),
+    LaneMix(LaneId),
+    Unknown {
+        target_id: TargetId,
+        reason: Option<String>,
+    },
+}
+
+impl HostParameter {
+    fn id(&self) -> TargetId {
+        use HostParameter::*;
+        match self {
+            LaneGain(lane_id) => 0, // FIXME,
+            LaneMix(lane_id) => 0,  // FIXME
+            Unknown {
+                target_id,
+                reason: _,
+            } => 0, // FIXME
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use crate::modulation::{ModulationSource, ModulationTarget, RateMode};
+    use crate::modulation::{HostParameter, ModulationSource, ModulationTarget, RateMode};
     use crate::modulator::ModulatorId;
     use crate::test::read_preset;
 
@@ -403,17 +474,29 @@ mod test {
             "macros-1to3_to_lanes_gain_and_mix-2.1.0.phaseplant",
         );
         assert_eq!(6, preset.modulations.len());
-        // for mods in &preset.modulations {
-        //     println!("MODULATION: {mods:?}");
-        // }
+        for mods in &preset.modulations {
+            println!("MODULATION: {mods:?}");
+        }
         for index in (0..6).step_by(2) {
-            let _modulation = &preset.modulations.get(index).unwrap();
-            let _mod_pos = (index / 2) as ModulatorId;
-            // assert_eq!(modulation.source, ModulationSource::MacroControl(mod_pos));
-            // assert_eq!(modulation.destination, ModulationTarget::LaneGain(mod_pos));
-            let _modulation = &preset.modulations.get(index + 1).unwrap();
-            // assert_eq!(modulation.source, ModulationSource::MacroControl(mod_pos));
-            // assert_eq!(modulation.destination, ModulationTarget::LaneMix(mod_pos));
+            let modulation = &preset.modulations.get(index).unwrap();
+            let mod_pos = (index / 2) as ModulatorId;
+            assert_eq!(modulation.source, ModulationSource::MacroControl(mod_pos));
+            assert_eq!(
+                modulation.target,
+                ModulationTarget::Host {
+                    parameter: HostParameter::LaneMix(mod_pos),
+                    rate_mode: RateMode::Control
+                }
+            );
+            let modulation = &preset.modulations.get(index + 1).unwrap();
+            assert_eq!(modulation.source, ModulationSource::MacroControl(mod_pos));
+            assert_eq!(
+                modulation.target,
+                ModulationTarget::Host {
+                    parameter: HostParameter::LaneGain(mod_pos),
+                    rate_mode: RateMode::Control
+                }
+            );
         }
     }
 
@@ -424,7 +507,7 @@ mod test {
         assert_eq!(
             Unknown {
                 module_id: 0xFFFF,
-                target_id: 0x7234,
+                parameter_id: 0x7234,
                 rate_mode: RateMode::Audio,
             },
             ModulationTarget::from(0xF234FFFF)
@@ -434,15 +517,23 @@ mod test {
     #[test]
     fn source_from() {
         use ModulationSource::*;
-        assert_eq!(Blank, ModulationSource::from(0x0000FFFF));
-        assert_eq!(
+        assert_eq!(ModulationSource::from(0x0000FFFF), MacroControl(0));
+        assert_eq!(ModulationSource::from(0x0002FFFF), MacroControl(2));
+        assert!(matches!(
+            ModulationSource::from(0x7234FFFF),
             Unknown {
-                module_id: 0xFFFF,
-                source_id: 0xF234,
+                category_id: 0xFFFF,
+                source_id: 0x7234,
+                reason: _,
+            }
+        ));
+        assert_eq!(
+            ModulationSource::from(0x8234FFFF),
+            AudioRate {
+                module_id: 0x23,
+                parameter_id: 0x4,
             },
-            ModulationSource::from(0xF234FFFF)
         );
-        // assert_eq!(MacroControl(2), ModulationSource::from(0x0002FFFF));
     }
 }
 
