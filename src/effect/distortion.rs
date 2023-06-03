@@ -12,8 +12,7 @@ use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
-use strum::IntoEnumIterator;
-use strum_macros::EnumIter;
+use strum_macros::FromRepr;
 use uom::si::f32::Ratio;
 use uom::si::ratio::{percent, ratio};
 
@@ -22,7 +21,7 @@ use crate::Decibels;
 use super::super::io::*;
 use super::{Effect, EffectMode};
 
-#[derive(Copy, Clone, Debug, EnumIter, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, FromRepr, Eq, PartialEq)]
 #[repr(u32)]
 pub enum DistortionMode {
     // The discriminants correspond to the file format.
@@ -34,6 +33,17 @@ pub enum DistortionMode {
 
     /// Quantize was added in Phase Plant 1.8.0
     Quantize = 5,
+}
+
+impl DistortionMode {
+    pub(crate) fn from_id(id: u32) -> Result<Self, Error> {
+        Self::from_repr(id).ok_or_else(|| {
+            Error::new(
+                ErrorKind::InvalidData,
+                format!("Unknown distortion mode {id}"),
+            )
+        })
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -114,7 +124,7 @@ impl EffectRead for Distortion {
         let drive = Decibels::from_linear(reader.read_f32()?);
         let bias = reader.read_f32()?;
         let spread = reader.read_f32()?;
-        let mode_id = reader.read_u32()?;
+        let mode = DistortionMode::from_id(reader.read_u32()?)?;
         let dynamics = reader.read_f32()?;
         let mix = Ratio::new::<ratio>(reader.read_f32()?);
         let minimized = reader.read_bool32()?;
@@ -127,17 +137,6 @@ impl EffectRead for Distortion {
             reader.expect_u32(0, "distortion_unknown3")?;
             dc_filter = reader.read_bool32()?;
         }
-
-        let mode_opt = DistortionMode::iter().find(|mode| *mode as u32 == mode_id);
-        let mode = match mode_opt {
-            Some(mode) => mode,
-            None => {
-                return Err(Error::new(
-                    ErrorKind::InvalidData,
-                    format!("Unknown distortion mode {mode_id}"),
-                ));
-            }
-        };
 
         Ok(EffectReadReturn::new(
             Box::new(Distortion {

@@ -189,14 +189,14 @@ impl ModulationSource {
             reason: _,
         } = self
         {
-            return ((*category_id as u32) << 16) | (*source_id as u32);
+            return ((*source_id as u32) << 16) | (*category_id as u32);
         }
 
         let source_id = match self {
             AudioRate {
                 module_id,
                 parameter_id,
-            } => RateMode::Audio.add_id(module_id << 4 | (*parameter_id as u16)),
+            } => RateMode::Audio.add_id(module_id << 4 | *parameter_id),
             MacroControl(id) => RateMode::Control.add_id(*id as u16),
             Unknown { .. } => unreachable!(),
         };
@@ -220,7 +220,6 @@ impl From<u32> for ModulationSource {
                 RateMode::Audio => {
                     let module_id = part_id >> 4;
                     let parameter_id = (part_id & 0x000F) as ParameterId;
-                    // println!("MODULE {module_id:#x} PARAMETER {parameter_id:#x}");
                     AudioRate {
                         module_id,
                         parameter_id,
@@ -230,10 +229,10 @@ impl From<u32> for ModulationSource {
                     0..=7 => MacroControl(part_id as u8),
                     _ => Unknown {
                         category_id,
-                        source_id: part_id,
-                        reason: Some(
-                            "Control rate source {part_id:#x} is not recognized.".to_owned(),
-                        ),
+                        source_id,
+                        reason: Some(format!(
+                            "Control rate source {part_id:#x} is not recognized"
+                        )),
                     },
                 },
             }
@@ -241,7 +240,7 @@ impl From<u32> for ModulationSource {
             Unknown {
                 category_id,
                 source_id,
-                reason: Some("Unknown category {category_id:#x}.".to_owned()),
+                reason: Some(format!("Unknown category {category_id:#x}")),
             }
         }
     }
@@ -253,7 +252,6 @@ impl From<u32> for ModulationSource {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ModulationTarget {
-    Blank,
     Host {
         parameter: HostParameter,
         rate_mode: RateMode,
@@ -268,7 +266,7 @@ pub enum ModulationTarget {
         rate_mode: RateMode,
     },
     Unknown {
-        module_id: ModuleId,
+        category_id: CategoryId,
         parameter_id: TargetId,
         rate_mode: RateMode,
     },
@@ -276,7 +274,11 @@ pub enum ModulationTarget {
 
 impl Default for ModulationTarget {
     fn default() -> Self {
-        Self::Blank
+        Self::Unknown {
+            category_id: Self::HOST_CATEGORY_ID,
+            parameter_id: 0,
+            rate_mode: RateMode::Control,
+        }
     }
 }
 
@@ -285,7 +287,6 @@ impl Display for ModulationTarget {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         use ModulationTarget::*;
         let msg = match self {
-            Blank => "Blank".to_owned(),
             Host {
                 parameter: target,
                 rate_mode,
@@ -312,11 +313,11 @@ impl Display for ModulationTarget {
                 rate_mode.to_string().to_lowercase()
             ),
             Unknown {
-                module_id,
+                category_id: module_id,
                 parameter_id: target_id,
                 rate_mode,
             } => format!(
-                "Module {module_id:#x} {} target {target_id:#x}",
+                "Unknown module {module_id:#x} {} target {target_id:#x}",
                 rate_mode.to_string().to_lowercase()
             ),
         };
@@ -340,7 +341,6 @@ impl ModulationTarget {
     pub fn id(&self) -> u32 {
         use ModulationTarget::*;
         match self {
-            Blank => 0,
             Host {
                 parameter: target,
                 rate_mode,
@@ -355,7 +355,7 @@ impl ModulationTarget {
                 rate_mode,
             } => (rate_mode.add_id(*target_id) as u32) << 16 | *snapin_id as u32,
             Unknown {
-                module_id,
+                category_id: module_id,
                 parameter_id: target_id,
                 rate_mode,
             } => (rate_mode.add_id(*target_id) as u32) << 16 | *module_id as u32,
@@ -369,52 +369,51 @@ impl From<u32> for ModulationTarget {
 
         let (rate_mode, target_id) = RateMode::split_id((id >> 16) as u16);
 
-        let module_id = (id & 0xFFFF) as u16;
-        if module_id == Self::HOST_CATEGORY_ID {
-            println!(
-                "TARGET ID {:#x} vs LANE {:#x} to {:#x}",
-                target_id,
-                Self::LANE_START,
-                Self::LANE_END
-            );
-            match target_id {
-                0 => Blank,
+        let category_id = (id & 0xFFFF) as u16;
+        if category_id == Self::HOST_CATEGORY_ID {
+            use HostParameter::*;
+            let parameter: HostParameter = match target_id {
+                // Start with ranges
                 Self::LANE_START..=Self::LANE_END => {
-                    use HostParameter::*;
-
                     let lane_id = ((target_id - Self::LANE_START) / Self::LANE_SIZE) as LaneId;
                     let parameter_id = (target_id - Self::LANE_START) % Self::LANE_SIZE;
-                    let parameter = match parameter_id {
+                    match parameter_id {
                         0 => LaneMix(lane_id),
                         1 => LaneGain(lane_id),
                         _ => Unknown {
                             target_id,
                             reason: Some(format!("Lane parameter {parameter_id} not recognized")),
                         },
-                    };
-                    Host {
-                        parameter,
-                        rate_mode,
                     }
                 }
+
+                // Individual parameters
+                9711 => UnisonBias,
+                3006 => UnisonBlend,
+                3004 => UnisonDetune,
+                3005 => UnisonSpread,
                 _ => Unknown {
-                    module_id,
-                    parameter_id: target_id,
-                    rate_mode,
+                    target_id,
+                    reason: Some(format!("Host parameter {target_id} not recognized")),
                 },
+            };
+
+            Host {
+                parameter,
+                rate_mode,
             }
-        } else if module_id == Self::MODULATION_CATEGORY_ID {
+        } else if category_id == Self::MODULATION_CATEGORY_ID {
             // match target_id {
             //     _ => Unknown {
             Unknown {
-                module_id,
+                category_id,
                 parameter_id: target_id,
                 rate_mode,
             }
-        // }
+            // }
         } else {
             Snapin {
-                snapin_id: module_id,
+                snapin_id: category_id,
                 parameter_id: target_id,
                 rate_mode,
             }
@@ -439,6 +438,10 @@ pub enum AudioRateTargetParameter {
 pub enum HostParameter {
     LaneGain(LaneId),
     LaneMix(LaneId),
+    UnisonBias,
+    UnisonBlend,
+    UnisonDetune,
+    UnisonSpread,
     Unknown {
         target_id: TargetId,
         reason: Option<String>,
@@ -449,18 +452,32 @@ impl HostParameter {
     fn id(&self) -> TargetId {
         use HostParameter::*;
         match self {
-            LaneGain(lane_id) => 0, // FIXME,
-            LaneMix(lane_id) => 0,  // FIXME
+            LaneGain(lane_id) => {
+                ModulationTarget::LANE_START + (*lane_id as u16 * ModulationTarget::LANE_SIZE) + 1
+            }
+            LaneMix(lane_id) => {
+                ModulationTarget::LANE_START + (*lane_id as u16 * ModulationTarget::LANE_SIZE)
+            }
+            UnisonBias => 9711,
+            UnisonBlend => 3006,
+            UnisonDetune => 3004,
+            UnisonSpread => 3005,
             Unknown {
                 target_id,
                 reason: _,
-            } => 0, // FIXME
+            } => *target_id,
         }
     }
 }
 
 #[cfg(test)]
 mod test {
+    use approx::assert_relative_eq;
+    use uom::num::Zero;
+    use uom::si::f32::Ratio;
+    use uom::si::ratio::{percent, ratio};
+
+    use crate::modulation::HostParameter::{LaneGain, LaneMix};
     use crate::modulation::{HostParameter, ModulationSource, ModulationTarget, RateMode};
     use crate::modulator::ModulatorId;
     use crate::test::read_preset;
@@ -474,9 +491,6 @@ mod test {
             "macros-1to3_to_lanes_gain_and_mix-2.1.0.phaseplant",
         );
         assert_eq!(6, preset.modulations.len());
-        for mods in &preset.modulations {
-            println!("MODULATION: {mods:?}");
-        }
         for index in (0..6).step_by(2) {
             let modulation = &preset.modulations.get(index).unwrap();
             let mod_pos = (index / 2) as ModulatorId;
@@ -484,8 +498,8 @@ mod test {
             assert_eq!(
                 modulation.target,
                 ModulationTarget::Host {
-                    parameter: HostParameter::LaneMix(mod_pos),
-                    rate_mode: RateMode::Control
+                    parameter: LaneMix(mod_pos),
+                    rate_mode: RateMode::Control,
                 }
             );
             let modulation = &preset.modulations.get(index + 1).unwrap();
@@ -493,25 +507,106 @@ mod test {
             assert_eq!(
                 modulation.target,
                 ModulationTarget::Host {
-                    parameter: HostParameter::LaneGain(mod_pos),
-                    rate_mode: RateMode::Control
+                    parameter: LaneGain(mod_pos),
+                    rate_mode: RateMode::Control,
                 }
             );
         }
     }
 
+    /// Macro 3 to unison detune, spread, blend, bias.
+    #[test]
+    fn macros_version_2() {
+        let preset = read_preset(
+            "modulation",
+            "macro-3-detune-spread-blend-bias-2.0.16.phaseplant",
+        );
+
+        assert_eq!(preset.modulations.len(), 4);
+        for modulation in &preset.modulations {
+            assert!(modulation.enabled);
+            assert_eq!(modulation.curve, Ratio::zero());
+            assert_eq!(modulation.source, ModulationSource::MacroControl(2));
+        }
+
+        let modulation = &preset.modulations[0];
+        assert_relative_eq!(
+            modulation.amount.get::<ratio>(),
+            10.0 / 200.0,
+            epsilon = 0.0001
+        );
+        assert_eq!(
+            modulation.target,
+            ModulationTarget::Host {
+                parameter: HostParameter::UnisonDetune,
+                rate_mode: RateMode::Control,
+            }
+        );
+
+        let modulation = &preset.modulations[1];
+        assert_relative_eq!(modulation.amount.get::<percent>(), 20.0, epsilon = 0.0001);
+        assert_eq!(
+            modulation.target,
+            ModulationTarget::Host {
+                parameter: HostParameter::UnisonSpread,
+                rate_mode: RateMode::Control,
+            }
+        );
+
+        let modulation = &preset.modulations[2];
+        assert_relative_eq!(
+            modulation.amount.get::<ratio>(),
+            40.0 / 200.0,
+            epsilon = 0.0001
+        );
+        assert_eq!(
+            modulation.target,
+            ModulationTarget::Host {
+                parameter: HostParameter::UnisonBias,
+                rate_mode: RateMode::Control,
+            }
+        );
+
+        let modulation = &preset.modulations[3];
+        assert_relative_eq!(modulation.amount.get::<percent>(), 30.0, epsilon = 0.0001);
+        assert_eq!(
+            modulation.target,
+            ModulationTarget::Host {
+                parameter: HostParameter::UnisonBlend,
+                rate_mode: RateMode::Control,
+            }
+        );
+    }
+
     #[test]
     fn target_from() {
         use ModulationTarget::*;
-        assert_eq!(Blank, ModulationTarget::from(0x0000FFFF));
-        assert_eq!(
-            Unknown {
-                module_id: 0xFFFF,
-                parameter_id: 0x7234,
+        assert!(matches!(
+            ModulationTarget::from(0xF234FFFF),
+            Host {
+                parameter: HostParameter::Unknown {
+                    target_id: 0x7234,
+                    reason: _
+                },
                 rate_mode: RateMode::Audio,
             },
-            ModulationTarget::from(0xF234FFFF)
+        ));
+        assert_eq!(
+            ModulationTarget::from(0x019DFFFF),
+            Host {
+                parameter: LaneMix(0),
+                rate_mode: RateMode::Control,
+            }
         );
+    }
+
+    /// Converting from a target ID and back again must result in the same ID.
+    #[test]
+    fn target_id() {
+        for id in 0..=0xFFFF {
+            let id_with_module = id << 16 | 0xFFFF;
+            assert_eq!(id_with_module, ModulationTarget::from(id_with_module).id());
+        }
     }
 
     #[test]
@@ -535,72 +630,20 @@ mod test {
             },
         );
     }
+
+    /// Converting from a source ID and back again must result in the same ID.
+    #[test]
+    fn source_id() {
+        for id in 0..=0xFFFF {
+            let id_with_module = id << 16 | 0xFFFF;
+            assert_eq!(id_with_module, ModulationSource::from(id_with_module).id());
+        }
+    }
 }
 
 #[cfg(disabled)]
 #[cfg(test)]
 mod test {
-    #[test]
-    fn macros_to_same_dest() {
-        let preset = read_preset("modulation", "macros-1to4-env-delay-2.1.0.phaseplant");
-        assert_eq!(preset.modulations.len(), 4);
-        for (id, modulation) in preset.modulations.into_iter().enumerate() {
-            assert!(modulation.enabled);
-            assert_eq!(
-                modulation.source,
-                ModulationSource::MacroControl(id as MacroControlId)
-            );
-            // assert_eq!(
-            //     modulation.destination,
-            //     ModulationTarget::Modulation {
-            //         modulator_id: 0,
-            //         parameter_id: 7,
-            //     }
-            // );
-        }
-    }
-
-    #[test]
-    fn macros_version_2() {
-        let preset = read_preset(
-            "modulation",
-            "macro-3-detune-spread-blend-bias-2.0.16.phaseplant",
-        );
-        assert_eq!(preset.modulations.len(), 4);
-        let modulation = &preset.modulations[0];
-        assert!(modulation.enabled);
-        assert_eq!(modulation.curve, Ratio::zero());
-        assert_relative_eq!(
-            modulation.amount.get::<ratio>(),
-            10.0 / 200.0,
-            epsilon = 0.0001
-        );
-        assert_eq!(modulation.source, ModulationSource::MacroControl(2));
-        assert_eq!(modulation.destination, ModulationTarget::Detune);
-        let modulation = &preset.modulations[1];
-        assert!(modulation.enabled);
-        assert_eq!(modulation.curve, Ratio::zero());
-        assert_relative_eq!(modulation.amount.get::<percent>(), 20.0, epsilon = 0.0001);
-        assert_eq!(modulation.source, ModulationSource::MacroControl(2));
-        assert_eq!(modulation.destination, ModulationTarget::Spread);
-        let modulation = &preset.modulations[2];
-        assert!(modulation.enabled);
-        assert_eq!(modulation.curve, Ratio::zero());
-        assert_relative_eq!(
-            modulation.amount.get::<ratio>(),
-            40.0 / 200.0,
-            epsilon = 0.0001
-        );
-        assert_eq!(modulation.source, ModulationSource::MacroControl(2));
-        assert_eq!(modulation.destination, ModulationTarget::Bias);
-        let modulation = &preset.modulations[3];
-        assert!(modulation.enabled);
-        assert_eq!(modulation.curve, Ratio::zero());
-        assert_relative_eq!(modulation.amount.get::<percent>(), 30.0, epsilon = 0.0001);
-        assert_eq!(modulation.source, ModulationSource::MacroControl(2));
-        assert_eq!(modulation.destination, ModulationTarget::Blend);
-    }
-
     /// Mod wheel to various parts of two envelope output generators.
     #[test]
     fn mod_wheel_envelope_outputs() {

@@ -55,8 +55,8 @@ impl Display for MotionMode {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ensemble {
     pub voices: u32,
-    pub detune: f32,
-    pub spread: f32,
+    pub detune: Ratio,
+    pub spread: Ratio,
     pub mix: Ratio,
     pub motion_mode: MotionMode,
 }
@@ -65,8 +65,8 @@ impl Default for Ensemble {
     fn default() -> Self {
         Ensemble {
             voices: 6,
-            detune: 0.25,
-            spread: 0.50,
+            detune: Ratio::new::<percent>(25.0),
+            spread: Ratio::new::<percent>(50.0),
             mix: Ratio::new::<percent>(100.0),
             motion_mode: MotionMode::Symmetric,
         }
@@ -105,8 +105,8 @@ impl EffectRead for Ensemble {
         }
 
         let voices = reader.read_u32()?;
-        let detune = reader.read_f32()?;
-        let spread = reader.read_f32()?;
+        let detune = Ratio::new::<ratio>(reader.read_f32()?);
+        let spread = Ratio::new::<ratio>(reader.read_f32()?);
         let mix = Ratio::new::<ratio>(reader.read_f32()?);
         let enabled = reader.read_bool32()?;
 
@@ -143,8 +143,8 @@ impl EffectWrite for Ensemble {
         minimized: bool,
     ) -> io::Result<()> {
         writer.write_u32(self.voices)?;
-        writer.write_f32(self.detune)?;
-        writer.write_f32(self.spread)?;
+        writer.write_f32(self.detune.get::<ratio>())?;
+        writer.write_f32(self.spread.get::<ratio>())?;
         writer.write_f32(self.mix.get::<ratio>())?;
         writer.write_bool32(enabled)?;
         writer.write_bool32(minimized)?;
@@ -177,8 +177,8 @@ mod test {
     fn default() {
         let effect = Ensemble::default();
         assert_eq!(effect.voices, 6);
-        assert_eq!(effect.detune, 0.25);
-        assert_eq!(effect.spread, 0.50);
+        assert_eq!(effect.detune.get::<percent>(), 25.0);
+        assert_eq!(effect.spread.get::<percent>(), 50.0);
         assert_eq!(effect.mix.get::<percent>(), 100.0);
         assert_eq!(effect.motion_mode, MotionMode::Symmetric);
     }
@@ -193,7 +193,11 @@ mod test {
 
     #[test]
     fn init() {
-        for file in &["ensemble-1.8.13.phaseplant", "ensemble-2.0.12.phaseplant"] {
+        for file in &[
+            "ensemble-1.8.13.phaseplant",
+            "ensemble-2.0.12.phaseplant",
+            "ensemble-2.1.0.phaseplant",
+        ] {
             let preset = read_effect_preset("ensemble", file).unwrap();
             let snapin = &preset.lanes[0].snapins[0];
             assert!(snapin.enabled);

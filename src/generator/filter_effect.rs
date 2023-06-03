@@ -74,6 +74,7 @@ impl dyn Generator {
 #[cfg(test)]
 mod test {
     use approx::assert_relative_eq;
+    use uom::si::frequency::hertz;
 
     use crate::effect::FilterMode;
     use crate::test::read_generator_preset;
@@ -85,7 +86,11 @@ mod test {
     fn defaults() {
         let generator = FilterEffect::default();
         assert_eq!(generator.effect.filter_mode, FilterMode::LowPass);
-        assert_relative_eq!(generator.effect.cutoff_frequency, 440.0, epsilon = 0.0001);
+        assert_relative_eq!(
+            generator.effect.cutoff.get::<hertz>(),
+            440.0,
+            epsilon = 0.0001
+        );
         assert_relative_eq!(generator.effect.q, 0.707, epsilon = 0.0001);
         assert_eq!(generator.effect.gain, Decibels::ZERO);
         assert_eq!(generator.effect.slope, 1);
@@ -112,7 +117,11 @@ mod test {
             assert!(generator.enabled);
             assert_eq!(generator.name(), "Filter".to_owned());
             assert_eq!(generator.effect.filter_mode, FilterMode::LowPass);
-            assert_relative_eq!(generator.effect.cutoff_frequency, 440.0, epsilon = 0.0001);
+            assert_relative_eq!(
+                generator.effect.cutoff.get::<hertz>(),
+                440.0,
+                epsilon = 0.0001
+            );
             assert_relative_eq!(generator.effect.q, 0.707, epsilon = 0.0001);
             assert_eq!(generator.effect.gain, Decibels::ZERO);
             assert_eq!(generator.effect.slope, 1);
@@ -133,7 +142,11 @@ mod test {
         .unwrap();
         let generator: &FilterEffect = preset.generator(1).unwrap();
         assert_eq!(generator.effect.filter_mode, FilterMode::BandPass);
-        assert_relative_eq!(generator.effect.cutoff_frequency, 220.0, epsilon = 0.0001);
+        assert_relative_eq!(
+            generator.effect.cutoff.get::<hertz>(),
+            220.0,
+            epsilon = 0.0001
+        );
 
         // FIXME: THIS IS AN *OUT* SLOPE ADSR
         let preset = read_generator_preset(

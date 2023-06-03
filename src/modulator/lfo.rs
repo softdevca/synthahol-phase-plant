@@ -1,6 +1,7 @@
 //! [Low frequency oscillator (LFO) modulator](https://kilohearts.com/docs/modulation#lfo)
 
 use std::any::Any;
+
 use strum_macros::FromRepr;
 use uom::si::f32::Frequency;
 use uom::si::frequency::hertz;

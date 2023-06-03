@@ -317,12 +317,12 @@ mod test {
     use music_note::midi;
     use uom::si::frequency::hertz;
     use uom::si::ratio::percent;
+    use uom::si::ratio::ratio;
     use uom::si::time::millisecond;
 
     use crate::test::read_generator_preset;
 
     use super::*;
-    use uom::si::ratio::ratio;
 
     #[test]
     fn auto_length_adjust() {

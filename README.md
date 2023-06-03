@@ -50,13 +50,9 @@ fn main() -> std::io::Result<()> {
 ## Known Limitations
 
 * Writing is a work in progress.
-* Presets created by version of Phase Plant before the public release version  
-  of 1.7.0 are not supporter. Some of the early factory presets were created
-  with a pre-release version of Phase Plant.
+* Presets created by version of Phase Plant before the public release version of 1.7.0 are not supporter. Some of the early factory presets were created with a pre-release version of Phase Plant.
 * Modulation routing is a work in progress.
-* Snapin hosts like Multipass, Slice Eq and Snap Heap are not yet fully
-  supported. CarveEQ is not supported because it is stored like a host in
-  the preset.
+* Snapin hosts like Multipass, Slice Eq and Snap Heap are not yet fully supported. CarveEQ is not supported because it is stored like a host in the preset.
 
 ## Other Libraries
 

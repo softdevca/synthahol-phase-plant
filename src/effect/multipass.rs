@@ -5,7 +5,7 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.0               | 1044           |
+//! | 1.8.0 to 1.8.5      | 1044           |
 //! | 2.0.0               | 1056           |
 //! | 2.0.12              | 1057           |
 //! | 2.1.0               | 1058           |
@@ -157,9 +157,10 @@ impl EffectWrite for Multipass {
 
 #[cfg(test)]
 mod test {
+    use approx::assert_relative_eq;
+
     use crate::effect::Filter;
     use crate::test::read_effect_preset;
-    use approx::assert_relative_eq;
 
     use super::*;
 

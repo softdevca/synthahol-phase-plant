@@ -94,6 +94,23 @@ impl Display for OutputDestination {
     }
 }
 
+#[derive(Copy, Clone, Debug, Default, Display, Eq, FromRepr, PartialEq)]
+#[repr(u32)]
+pub enum SeedMode {
+    // The discriminates match the file format. Using an enumeration provides
+    // a clearer intention than a boolean.
+    #[default]
+    Stable,
+    Random,
+}
+
+impl SeedMode {
+    pub(crate) fn from_id(id: u32) -> Result<Self, Error> {
+        Self::from_repr(id)
+            .ok_or_else(|| Error::new(ErrorKind::InvalidData, format!("Unknown seed mode {id}")))
+    }
+}
+
 impl Preset {
     /// Get a generator by index. Useful for testing.
     pub fn generator<T: Generator>(&self, generator_index: usize) -> Option<&T> {
@@ -217,7 +234,7 @@ mod test {
         assert_eq!(analog.waveform, AnalogWaveform::Saw);
 
         let noise: &NoiseGenerator = preset.generator(2).unwrap();
-        assert!(!noise.seed_random);
+        assert_eq!(noise.seed_mode, SeedMode::Stable);
 
         let sampler: &SamplePlayer = preset.generator(3).unwrap();
         assert!(!sampler.loop_enabled);

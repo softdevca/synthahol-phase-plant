@@ -211,14 +211,14 @@ impl GeneratorBlock {
         writer.write_u32(self.analog_waveform as u32)?;
         writer.write_f32(self.sync_multiplier)?;
         writer.write_f32(self.pulse_width)?;
-        writer.write_bool32(self.seed_random)?;
+        writer.write_u32(self.seed_mode as u32)?;
         writer.write_f32(self.noise_slope)?;
         writer.write_f32(self.stereo)?;
         writer.write_u32(self.noise_waveform as u32)?;
 
         trace!("generator: filter effect pos {}", writer.pos_text());
         writer.write_u32(self.filter_effect.filter_mode as u32)?;
-        writer.write_f32(self.filter_effect.cutoff_frequency)?;
+        writer.write_f32(self.filter_effect.cutoff.get::<hertz>())?;
         writer.write_f32(self.filter_effect.q)?;
         writer.write_f32(self.filter_effect.gain.linear())?;
 

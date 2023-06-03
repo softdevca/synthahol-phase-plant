@@ -14,6 +14,8 @@ use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use strum_macros::FromRepr;
+use uom::si::f32::Frequency;
+use uom::si::frequency::hertz;
 
 use crate::Decibels;
 
@@ -61,10 +63,7 @@ impl Display for FilterMode {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Filter {
     pub filter_mode: FilterMode,
-
-    /// In hertz
-    pub cutoff_frequency: f32,
-
+    pub cutoff: Frequency,
     pub q: f32,
     pub gain: Decibels,
     pub slope: u32,
@@ -85,7 +84,7 @@ impl Default for Filter {
     fn default() -> Self {
         Filter {
             filter_mode: FilterMode::LowPass,
-            cutoff_frequency: 620.0, // Default is 440.0 in generators and 620.0 in effects
+            cutoff: Frequency::new::<hertz>(620.0), // Default is 440.0 in generators and 620.0 in effects
             q: 0.707,
             gain: Decibels::new(6.0), // Default is 0.0 for generators
             slope: 1,
@@ -122,7 +121,7 @@ impl EffectRead for Filter {
 
         let enabled = reader.read_bool32()?;
         let mode = FilterMode::from_id(reader.read_u32()?)?;
-        let cutoff_frequency = reader.read_f32()?;
+        let cutoff = Frequency::new::<hertz>(reader.read_f32()?);
         let q = reader.read_f32()?;
         let gain = Decibels::new(reader.read_f32()?);
         let minimized = reader.read_bool32()?;
@@ -142,7 +141,7 @@ impl EffectRead for Filter {
         Ok(EffectReadReturn::new(
             Box::new(Filter {
                 filter_mode: mode,
-                cutoff_frequency,
+                cutoff,
                 q,
                 gain,
                 slope,
@@ -162,7 +161,7 @@ impl EffectWrite for Filter {
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
         writer.write_u32(self.filter_mode as u32)?;
-        writer.write_f32(self.cutoff_frequency)?;
+        writer.write_f32(self.cutoff.get::<hertz>())?;
         writer.write_f32(self.q)?;
         writer.write_f32(self.gain.db())?;
         writer.write_bool32(minimized)?;
@@ -197,7 +196,7 @@ mod test {
     fn default() {
         let effect = Filter::default();
         assert_eq!(effect.filter_mode, FilterMode::LowPass);
-        assert_eq!(effect.cutoff_frequency, 620.0);
+        assert_eq!(effect.cutoff.get::<hertz>(), 620.0);
         assert_relative_eq!(effect.q, 0.707, epsilon = 0.0001);
         assert_relative_eq!(effect.gain.db(), 6.0, epsilon = 0.0001);
         assert_eq!(effect.slope, 1);
@@ -220,7 +219,7 @@ mod test {
             assert_eq!(snapin.position, 1);
             let effect = snapin.effect.as_filter().unwrap();
             assert_eq!(effect.filter_mode, FilterMode::LowPass);
-            assert_eq!(effect.cutoff_frequency, 620.0);
+            assert_eq!(effect.cutoff.get::<hertz>(), 620.0);
             assert_relative_eq!(effect.q, 0.707, epsilon = 0.0001);
             assert_relative_eq!(effect.gain.db(), 6.0, epsilon = 0.0001);
             assert_eq!(effect.slope, 1);
@@ -258,7 +257,7 @@ mod test {
             read_effect_preset("filter", "filter-cutoff440-q1.1-1.8.13.phaseplant").unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.downcast_ref::<Filter>().unwrap();
-        assert_relative_eq!(effect.cutoff_frequency, 440.0, epsilon = 0.0001);
+        assert_relative_eq!(effect.cutoff.get::<hertz>(), 440.0, epsilon = 0.0001);
         assert_relative_eq!(effect.q, 1.1, epsilon = 0.0001);
 
         let preset =

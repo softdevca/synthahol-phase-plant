@@ -8,7 +8,6 @@ use std::str;
 use byteorder::{LittleEndian, ReadBytesExt};
 use log::{debug, trace, warn};
 use serde::Deserialize;
-use strum::IntoEnumIterator;
 use uom::si::f32::{Frequency, Ratio, Time};
 use uom::si::frequency::hertz;
 use uom::si::ratio::{percent, ratio};
@@ -626,7 +625,7 @@ impl Preset {
             // Sample player
             let base_pitch = reader.read_f32()?;
             let offset_position = reader.read_f32()?;
-            let loop_mode = LoopMode::from_id(reader.read_u32()?)?;
+            let sample_loop_mode = LoopMode::from_id(reader.read_u32()?)?;
             let loop_start_position = reader.read_f32()?;
             let loop_length = reader.read_f32()?;
             let crossfade_amount = reader.read_f32()?;
@@ -635,47 +634,28 @@ impl Preset {
             }
             let wavetable_frame = reader.read_f32()?;
             let band_limit = reader.read_f32()?;
-            if !mode.is_blank() {
-                trace!(
-                    "generator: band limit {band_limit}, pos {}",
-                    reader.stream_position()? - 4
-                );
-            }
 
             let analog_waveform = AnalogWaveform::from_id(reader.read_u32()?)?;
 
-            let sync = reader.read_f32()?;
+            let sync_multiplier = reader.read_f32()?;
             let pulse_width = reader.read_f32()?;
-            let seed_random = reader.read_bool32()?;
+            let noise_waveform = NoiseWaveform::from_id(reader.read_u32()?)?;
             let noise_slope = reader.read_f32()?;
             let stereo = reader.read_f32()?;
 
-            let noise_waveform = NoiseWaveform::from_id(reader.read_u32()?)?;
+            let seed_mode = SeedMode::from_id(reader.read_u32()?)?;
 
             let filter_mode = FilterMode::from_id(reader.read_u32()?)?;
-
             let filter_effect = Filter {
                 filter_mode,
-                cutoff_frequency: reader.read_f32()?,
+                cutoff: Frequency::new::<hertz>(reader.read_f32()?),
                 q: reader.read_f32()?,
                 gain: Decibels::from_linear(reader.read_f32()?),
                 ..Default::default()
             };
 
-            let distortion_mode_id = reader.read_u32()?;
-            let distortion_mode =
-                match DistortionMode::iter().find(|mode| *mode as u32 == distortion_mode_id) {
-                    Some(mode) => mode,
-                    None => {
-                        return Err(Error::new(
-                            ErrorKind::InvalidData,
-                            format!("Distortion mode {distortion_mode_id} not recognized"),
-                        ));
-                    }
-                };
-
             let mut distortion_effect = Distortion::new();
-            distortion_effect.mode = distortion_mode;
+            distortion_effect.mode = DistortionMode::from_id(reader.read_u32()?)?;
             distortion_effect.drive = Decibels::from_linear(reader.read_f32()?);
             distortion_effect.bias = reader.read_f32()?;
             distortion_effect.dynamics = 0.0; // Not in the Phase Plant interface
@@ -710,13 +690,13 @@ impl Preset {
                 level,
                 unison,
                 analog_waveform,
-                sync_multiplier: sync,
+                sync_multiplier,
                 pulse_width,
                 base_pitch,
                 offset_position,
                 loop_start_position,
                 loop_length,
-                sample_loop_mode: loop_mode,
+                sample_loop_mode,
                 crossfade_amount,
                 invert,
                 filter_effect,
@@ -726,7 +706,7 @@ impl Preset {
                 noise_waveform,
                 noise_slope,
                 stereo,
-                seed_random,
+                seed_mode,
                 pan,
                 output_gain,
                 output_destination,

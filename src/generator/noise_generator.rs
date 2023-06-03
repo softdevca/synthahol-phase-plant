@@ -49,8 +49,7 @@ pub struct NoiseGenerator {
 
     pub stereo: f32,
 
-    /// Seed is stable if it isn't random.
-    pub seed_random: bool,
+    pub seed_mode: SeedMode,
 }
 
 impl NoiseGenerator {
@@ -83,7 +82,7 @@ impl From<&GeneratorBlock> for NoiseGenerator {
             waveform: block.noise_waveform,
             slope: block.noise_slope,
             stereo: block.stereo,
-            seed_random: block.seed_random,
+            seed_mode: block.seed_mode,
         }
     }
 }
@@ -164,12 +163,12 @@ mod test {
             assert_eq!(generator.phase_jitter, Ratio::zero());
             assert_relative_eq!(generator.slope, 3.0103, epsilon = 0.0001); // 3.0 db/Oct
             assert_eq!(generator.stereo, 0.0);
-            assert!(!generator.seed_random);
+            assert_eq!(generator.seed_mode, SeedMode::Stable);
         }
     }
 
     #[test]
-    fn parts() {
+    fn parts_version_1() {
         let preset = read_generator_preset(
             "noise_generator",
             "noise_generator-lane3-stereo15-1.8.16.phaseplant",
@@ -188,7 +187,26 @@ mod test {
         assert_eq!(generator.waveform, NoiseWaveform::KeytrackedStepped);
         assert_relative_eq!(generator.slope, 2.0);
         assert_relative_eq!(generator.stereo, 0.25);
-        assert!(generator.seed_random);
+        assert_eq!(generator.seed_mode, SeedMode::Random);
+    }
+
+    #[test]
+    fn parts_version_2() {
+        let preset = read_generator_preset(
+            "noise_generator",
+            "noise_generator-seed_random-2.1.0.phaseplant",
+        )
+        .unwrap();
+        let generator: &NoiseGenerator = preset.generator(1).unwrap();
+        assert_eq!(generator.seed_mode, SeedMode::Random);
+
+        let preset = read_generator_preset(
+            "noise_generator",
+            "noise_generator-waveform_smooth-2.1.0.phaseplant",
+        )
+        .unwrap();
+        let generator: &NoiseGenerator = preset.generator(1).unwrap();
+        assert_eq!(generator.waveform, NoiseWaveform::KeytrackedSmooth);
     }
 
     #[test]

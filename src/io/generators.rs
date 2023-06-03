@@ -70,7 +70,7 @@ pub struct GeneratorBlock {
     pub noise_waveform: NoiseWaveform,
     pub noise_slope: f32,
     pub stereo: f32,
-    pub seed_random: bool,
+    pub seed_mode: SeedMode,
     pub pan: Ratio,
 
     pub output_enabled: bool,
@@ -192,7 +192,7 @@ impl Default for GeneratorBlock {
             invert: false,
             distortion_effect,
             filter_effect: Filter {
-                cutoff_frequency: 440.0, // Different than default Filter effect
+                cutoff: Frequency::new::<hertz>(440.0), // Different than default Filter effect
                 gain: Decibels::ZERO,
                 ..Default::default()
             },
@@ -200,7 +200,7 @@ impl Default for GeneratorBlock {
             noise_waveform: NoiseWaveform::Colored,
             noise_slope: 3.0103,
             stereo: 0.0,
-            seed_random: false,
+            seed_mode: Default::default(),
             pan: Ratio::zero(),
 
             output_enabled: true,
@@ -464,7 +464,7 @@ impl From<&NoiseGenerator> for GeneratorBlock {
             noise_waveform: generator.waveform,
             noise_slope: generator.slope,
             stereo: generator.stereo,
-            seed_random: generator.seed_random,
+            seed_mode: generator.seed_mode,
             ..Default::default()
         }
     }

@@ -11,8 +11,8 @@
 use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
-use uom::num::Zero;
 
+use uom::num::Zero;
 use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::{percent, ratio};
 use uom::si::time::second;

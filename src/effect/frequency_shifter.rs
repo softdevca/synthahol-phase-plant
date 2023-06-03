@@ -3,16 +3,15 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.5               | 1037           |
-//! | 1.8.16              | 1037           |
+//! | 1.8.5 to 1.8.16     | 1037           |
 //! | 2.0.12              | 1047           |
 //! | 2.0.16              | 1048           |
 
 use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
-use uom::num::Zero;
 
+use uom::num::Zero;
 use uom::si::f32::Frequency;
 use uom::si::frequency::kilohertz;
 
@@ -22,6 +21,12 @@ use super::{Effect, EffectMode};
 #[derive(Clone, Debug, PartialEq)]
 pub struct FrequencyShifter {
     pub frequency: Frequency,
+}
+
+impl FrequencyShifter {
+    // TODO: Enable when uom supports const fn.
+    // pub const MIN_FREQUENCY: Frequency = Frequency::new::<hertz>(-5000.0);
+    // pub const MAX_FREQUENCY: Frequency = Frequency::new::<hertz>(5000.0);
 }
 
 impl Default for FrequencyShifter {
@@ -134,6 +139,7 @@ mod test {
         for file in &[
             "frequency_shifter-2.0.12.phaseplant",
             "frequency_shifter-2.0.16.phaseplant",
+            "frequency_shifter-2.1.0.phaseplant",
         ] {
             let preset = read_effect_preset("frequency_shifter", file).unwrap();
             let snapin = &preset.lanes[0].snapins[0];

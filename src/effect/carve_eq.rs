@@ -10,12 +10,12 @@
 
 // Phase Plant 1.8.14 added saving the zoom and pan settings of the view.
 
-use log::trace;
 use std::any::{type_name, Any};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use log::trace;
 use strum_macros::FromRepr;
 use uom::num::Zero;
 use uom::si::f32::{Frequency, Ratio};

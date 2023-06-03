@@ -4,15 +4,14 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.0               | 1038           |
-//! | 1.8.5               | 1038           |
+//! | 1.8.0 to 1.8.5      | 1038           |
 //! | 2.0.12              | 1050           |
-//! | 2.0.16              | 1051           |
-//! | 2.1.0               | 1051           |
+//! | 2.0.16 to 2.1.0     | 1051           |
 
 use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
+
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
@@ -109,10 +108,11 @@ impl EffectWrite for SnapHeap {
 
 #[cfg(test)]
 mod test {
-    use crate::effect::*;
-    use crate::test::read_effect_preset;
     use approx::assert_relative_eq;
     use uom::si::ratio::percent;
+
+    use crate::effect::*;
+    use crate::test::read_effect_preset;
 
     use super::SnapHeap;
 
