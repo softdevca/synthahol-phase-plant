@@ -6,10 +6,10 @@ use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 use uom::si::time::{millisecond, second};
 
-use crate::*;
 use crate::effect::{Distortion, Filter};
 use crate::generator::*;
 use crate::point::{CurvePoint, CurvePointMode};
+use crate::*;
 
 // TODO: Make GeneratorBlock crate-private.
 

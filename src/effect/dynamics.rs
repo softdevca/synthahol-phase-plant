@@ -9,7 +9,7 @@
 //! | 1.8.14              | 1003           |
 //! | 2.0.16              | 1014           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -18,8 +18,8 @@ use uom::si::ratio::percent;
 
 use crate::Decibels;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Dynamics {
@@ -168,9 +168,9 @@ impl EffectWrite for Dynamics {
 mod test {
     use approx::assert_relative_eq;
 
-    use crate::Decibels;
     use crate::effect::Filter;
     use crate::test::read_effect_preset;
+    use crate::Decibels;
 
     use super::*;
 

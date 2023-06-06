@@ -8,15 +8,15 @@
 //! | 2.0.12              | 1047           |
 //! | 2.1.0               | 1048           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use uom::si::f32::Frequency;
 use uom::si::frequency::hertz;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FormantFilter {

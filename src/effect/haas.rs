@@ -5,15 +5,15 @@
 //! | 1.8.5 to 1.8.14     | 1037           |
 //! | 2.0.16              | 1048           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use uom::si::f32::Time;
 use uom::si::time::millisecond;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Haas {

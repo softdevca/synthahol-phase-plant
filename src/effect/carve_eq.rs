@@ -10,7 +10,7 @@
 
 // Phase Plant 1.8.14 added saving the zoom and pan settings of the view.
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -22,11 +22,11 @@ use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 
-use crate::Decibels;
 use crate::version::Version;
+use crate::Decibels;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 pub type CarveEqShape = [[f32; CarveEq::BAND_COUNT]; CarveEq::CHANNEL_COUNT];
 

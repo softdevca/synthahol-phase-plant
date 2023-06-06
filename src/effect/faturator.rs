@@ -6,7 +6,7 @@
 //! | 1.6.9 to 1.8.13     | 1040           |
 //! | 2.0.16 to 2.1.0     | 1051           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -15,8 +15,8 @@ use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
 use uom::si::ratio::{percent, ratio};
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Faturator {

@@ -13,8 +13,8 @@ use std::io::{Error, ErrorKind, Read, Seek, Write};
 use uom::si::f32::Time;
 use uom::si::time::second;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TapeStop {

@@ -7,7 +7,7 @@
 //! | 2.0.0               | 1047           |
 //! | 2.0.16              | 1049           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -15,8 +15,8 @@ use uom::num::Zero;
 use uom::si::f32::Ratio;
 use uom::si::ratio::{percent, ratio};
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Stereo {

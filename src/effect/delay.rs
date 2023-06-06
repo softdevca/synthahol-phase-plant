@@ -8,7 +8,7 @@
 
 // The tone control was added in Phase Plant 2.0.9.
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -17,8 +17,8 @@ use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::{percent, ratio};
 use uom::si::time::second;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Debug)]
 pub struct Delay {

@@ -1,6 +1,6 @@
 use std::fs::File;
-use std::io::{Cursor, Error, ErrorKind, Seek};
 use std::io::prelude::*;
+use std::io::{Cursor, Error, ErrorKind, Seek};
 use std::mem::size_of;
 use std::path::Path;
 use std::str;
@@ -13,15 +13,15 @@ use uom::si::frequency::hertz;
 use uom::si::ratio::{percent, ratio};
 use uom::si::time::second;
 
-use crate::*;
 use crate::effect::*;
 use crate::generator::*;
 use crate::io::generators::GeneratorBlock;
-use crate::io::MetadataJson;
 use crate::io::modulators::*;
-use crate::modulation::{MODULATIONS_MAX, ModulationSource, ModulationTarget};
+use crate::io::MetadataJson;
+use crate::modulation::{ModulationSource, ModulationTarget, MODULATIONS_MAX};
 use crate::modulator::*;
 use crate::text::TextOptionExt;
+use crate::*;
 
 /// Maximum length of a general purpose string. Helps to avoid corrupt files
 /// from consuming larges amounts of resources.
@@ -1582,9 +1582,9 @@ mod test {
 
     use approx::assert_relative_eq;
 
-    use crate::*;
     use crate::test::read_preset;
     use crate::tests::test_data_path;
+    use crate::*;
 
     #[test]
     fn glide() {

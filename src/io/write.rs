@@ -7,7 +7,7 @@ use std::io::{Error, ErrorKind, Result, Seek, SeekFrom, Write};
 use std::mem::size_of;
 
 use byteorder::{LittleEndian, WriteBytesExt};
-use log::{Level, trace};
+use log::{trace, Level};
 use serde::Serialize;
 use serde_json::ser::PrettyFormatter;
 use serde_json::Serializer;
@@ -15,14 +15,14 @@ use uom::si::frequency::hertz;
 use uom::si::ratio::ratio;
 use uom::si::time::second;
 
-use crate::*;
 use crate::generator::{BlankGenerator, Generator, GeneratorMode, Group};
 use crate::io::generators::GeneratorBlock;
-use crate::io::MetadataJson;
 use crate::io::modulators::ModulatorBlock;
+use crate::io::MetadataJson;
 use crate::modulation::*;
 use crate::modulator::{BlankModulator, Modulator};
 use crate::text::HashTag;
+use crate::*;
 
 /// Files are written the same as this version of Phase Plant.
 pub(crate) const WRITE_SAME_AS: PhasePlantRelease = PhasePlantRelease::V2_1_0;

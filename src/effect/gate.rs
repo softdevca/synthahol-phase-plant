@@ -12,11 +12,11 @@ use std::io::{Error, ErrorKind, Read, Seek, Write};
 use uom::si::f32::Time;
 use uom::si::time::{millisecond, second};
 
-use crate::Decibels;
 use crate::effect::SidechainMode;
+use crate::Decibels;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Gate {

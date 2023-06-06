@@ -280,8 +280,8 @@ pub(crate) mod test {
     use std::io::{Cursor, Read, Seek, SeekFrom, Write};
     use std::path::Path;
 
-    use crate::*;
     use crate::tests::test_data_path;
+    use crate::*;
 
     fn load_preset(components: &[&str]) -> io::Result<Preset> {
         let mut path = test_data_path(&[]);

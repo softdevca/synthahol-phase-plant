@@ -7,7 +7,7 @@
 //! | 2.0.12              | 1025           |
 //! | 2.0.16              | 1026           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -16,8 +16,8 @@ use uom::si::frequency::hertz;
 
 use crate::Decibels;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ThreeBandEq {
@@ -141,9 +141,9 @@ mod test {
     use uom::si::f32::Frequency;
     use uom::si::frequency::hertz;
 
-    use crate::Decibels;
     use crate::effect::Filter;
     use crate::test::read_effect_preset;
+    use crate::Decibels;
 
     use super::*;
 

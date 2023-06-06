@@ -8,7 +8,7 @@ use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek};
 
-use downcast_rs::{Downcast, impl_downcast};
+use downcast_rs::{impl_downcast, Downcast};
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, FromRepr};
 

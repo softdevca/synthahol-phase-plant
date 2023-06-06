@@ -2,8 +2,8 @@
 
 use crate::effect::{Effect, Filter};
 use crate::io::WRITE_SAME_AS;
-use crate::Metadata;
 use crate::version::Version;
+use crate::Metadata;
 
 type SnapinPosition = u16;
 

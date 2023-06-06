@@ -6,7 +6,7 @@
 //! | 1.8.5 to 1.8.13     | 1032           |
 //! | 2.0.16              | 1043           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -18,8 +18,8 @@ use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 /// The file format stores the names rather than a discriminant.
 #[derive(Copy, Clone, Debug, EnumIter, Eq, PartialEq)]

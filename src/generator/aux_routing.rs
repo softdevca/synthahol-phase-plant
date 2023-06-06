@@ -6,8 +6,8 @@
 
 use std::any::Any;
 
-use crate::*;
 use crate::generator::{Generator, GeneratorId, GeneratorMode};
+use crate::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AuxRouting {

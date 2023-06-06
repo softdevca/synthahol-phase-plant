@@ -477,8 +477,8 @@ mod test {
     use uom::si::f32::Ratio;
     use uom::si::ratio::{percent, ratio};
 
-    use crate::modulation::{HostParameter, ModulationSource, ModulationTarget, RateMode};
     use crate::modulation::HostParameter::{LaneGain, LaneMix};
+    use crate::modulation::{HostParameter, ModulationSource, ModulationTarget, RateMode};
     use crate::modulator::ModulatorId;
     use crate::test::read_preset;
 

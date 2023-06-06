@@ -44,8 +44,8 @@ impl TextOptionExt<String> for Option<String> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use super::TextOptionExt;
+    use super::*;
 
     #[test]
     fn empty_to_none() {

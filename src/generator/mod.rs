@@ -2,7 +2,7 @@
 
 use std::any::Any;
 
-use downcast_rs::{Downcast, impl_downcast};
+use downcast_rs::{impl_downcast, Downcast};
 use strum_macros::Display;
 
 pub use analog_oscillator::*;

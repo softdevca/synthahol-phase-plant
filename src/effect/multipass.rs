@@ -10,7 +10,7 @@
 //! | 2.0.12              | 1057           |
 //! | 2.1.0               | 1058           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -21,8 +21,8 @@ use uom::si::ratio::percent;
 
 use crate::{Decibels, MacroControl};
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Copy, Debug, EnumIter, Eq, PartialEq)]
 #[repr(u8)]

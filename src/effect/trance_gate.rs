@@ -6,7 +6,7 @@
 //! | 1.8.14              | 1038           |
 //! | 2.0.16              | 1049           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -16,8 +16,8 @@ use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::percent;
 use uom::si::time::millisecond;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Copy, Debug, FromRepr, Eq, PartialEq)]
 #[repr(u32)]
@@ -438,7 +438,7 @@ mod test {
             "trance_gate",
             "trance_gate-count11-sustain80-release25-1.8.14.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_trance_gate().unwrap();
         assert_eq!(effect.step_count[0], 11);
@@ -449,7 +449,7 @@ mod test {
             "trance_gate",
             "trance_gate-eighth-mix66-disabled-1.8.14.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         assert!(!snapin.enabled);
         assert!(!snapin.minimized);
@@ -461,7 +461,7 @@ mod test {
             "trance_gate",
             "trance_gate-selected3-attack20-decay75-minimized-1.8.14.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         assert!(snapin.enabled);
         assert!(snapin.minimized);
@@ -477,7 +477,7 @@ mod test {
             "trance_gate",
             "trance_gate-eighth-selected7-2.0.16.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_trance_gate().unwrap();
         assert_eq!(effect.resolution, PatternResolution::Eighth);
@@ -487,7 +487,7 @@ mod test {
             "trance_gate",
             "trance_gate-sixteenth-all_off-2.0.16.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_trance_gate().unwrap();
         assert_eq!(effect.resolution, PatternResolution::Sixteenth);
@@ -508,7 +508,7 @@ mod test {
             "trance_gate",
             "trance_gate-sixteenth_triplet-all_on-2.0.16.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_trance_gate().unwrap();
         assert_eq!(effect.resolution, PatternResolution::SixteenthTriplet);

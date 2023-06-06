@@ -8,7 +8,7 @@
 //! | 2.0.12              | 1049           |
 //! | 2.0.16              | 1050           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -19,8 +19,8 @@ use uom::si::ratio::percent;
 
 use crate::Decibels;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Copy, Clone, Debug, FromRepr, Eq, PartialEq)]
 #[repr(u32)]

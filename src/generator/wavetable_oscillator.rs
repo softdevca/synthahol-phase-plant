@@ -109,8 +109,8 @@ mod test {
 
     use crate::test::read_generator_preset;
 
-    use super::*;
     use super::WavetableOscillator;
+    use super::*;
 
     #[test]
     fn init() {

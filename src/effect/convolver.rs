@@ -9,7 +9,7 @@
 //! | 2.0.12              | 1017           |
 //! | 2.0.16 to 2.1.0     | 1018           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -17,8 +17,8 @@ use uom::num::Zero;
 use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::percent;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Convolver {

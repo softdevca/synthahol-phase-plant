@@ -15,8 +15,8 @@ use uom::si::time::second;
 
 use crate::Decibels;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Limiter {
@@ -125,9 +125,9 @@ impl EffectWrite for Limiter {
 mod test {
     use approx::assert_relative_eq;
 
-    use crate::Decibels;
     use crate::effect::Filter;
     use crate::test::read_effect_preset;
+    use crate::Decibels;
 
     use super::*;
 

@@ -6,7 +6,7 @@
 //! | 1.8.5 to 1.8.14     | 1002           |
 //! | 2.0.16              | 1013           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -16,8 +16,8 @@ use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 use uom::si::time::second;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Flanger {

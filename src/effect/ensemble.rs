@@ -17,8 +17,8 @@ use strum_macros::FromRepr;
 use uom::si::f32::Ratio;
 use uom::si::ratio::{percent, ratio};
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Copy, Clone, Debug, FromRepr, Eq, PartialEq)]
 #[repr(u32)]

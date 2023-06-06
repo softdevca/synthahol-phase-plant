@@ -8,7 +8,7 @@
 //! | 1.8.16              | 1000           |
 //! | 2.0.16              | 1011           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -19,8 +19,8 @@ use uom::si::frequency::hertz;
 
 use crate::effect::FilterMode;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Copy, Clone, Debug, FromRepr, Eq, PartialEq)]
 #[repr(u32)]

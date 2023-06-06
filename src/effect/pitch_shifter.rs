@@ -6,7 +6,7 @@
 //! | 1.8.5 to 1.8.13     | 1039           |
 //! | 2.0.16              | 1050           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -17,8 +17,8 @@ use uom::si::f32::{Frequency, Ratio, Time};
 use uom::si::ratio::percent;
 use uom::si::time::millisecond;
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Clone, Copy, Debug, FromRepr, Eq, PartialEq)]
 #[repr(u32)]
@@ -229,7 +229,7 @@ mod test {
             "pitch_shifter",
             "pitch_shifter-comp_off-minimized-2.0.16.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         assert!(snapin.enabled);
         assert!(snapin.minimized);
@@ -240,7 +240,7 @@ mod test {
             "pitch_shifter",
             "pitch_shifter-correlate_off-comp_high-2.0.16.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_pitch_shifter().unwrap();
         assert!(!effect.correlate);
@@ -250,7 +250,7 @@ mod test {
             "pitch_shifter",
             "pitch_shifter-jitter50-grain100-mix35-2.0.16.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_pitch_shifter().unwrap();
         assert_relative_eq!(effect.jitter.get::<percent>(), 50.23, epsilon = 0.1);
@@ -261,7 +261,7 @@ mod test {
             "pitch_shifter",
             "pitch_shifter-plus5-disabled-2.0.16.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         assert!(!snapin.enabled);
         assert!(!snapin.minimized);
