@@ -3,20 +3,19 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.5               | 1038           |
-//! | 1.8.13              | 1038           |
+//! | 1.8.5 to 1.8.13     | 1038           |
 //! | 2.0.16              | 1049           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use uom::si::f32::{Ratio, Time};
-use uom::si::ratio::{percent, ratio};
+use uom::si::ratio::percent;
 use uom::si::time::{millisecond, second};
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Resonator {
@@ -33,7 +32,7 @@ pub struct Resonator {
 
 impl Default for Resonator {
     fn default() -> Self {
-        Resonator {
+        Self {
             note: 69.0, // Nice
             sawtooth: true,
             decay: Time::new::<millisecond>(10.0),
@@ -79,16 +78,16 @@ impl EffectRead for Resonator {
 
         let enabled = reader.read_bool32()?;
         let note = reader.read_f32()?;
-        let decay = Time::new::<second>(reader.read_f32()?);
+        let decay = reader.read_seconds()?;
         let intensity = reader.read_f32()?;
         let sawtooth = !reader.read_bool32()?;
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
+        let mix = reader.read_ratio()?;
         let minimized = reader.read_bool32()?;
 
-        reader.expect_u32(0, "resonator_unknown1")?;
-        reader.expect_u32(0, "resonator_unknown2")?;
+        reader.expect_u32(0, "resonator_unknown_1")?;
+        reader.expect_u32(0, "resonator_unknown_2")?;
         if effect_version > 1038 {
-            reader.expect_u32(0, "resonator_unknown3")?;
+            reader.expect_u32(0, "resonator_unknown_3")?;
         }
 
         Ok(EffectReadReturn::new(
@@ -117,13 +116,13 @@ impl EffectWrite for Resonator {
         writer.write_f32(self.decay.get::<second>())?;
         writer.write_f32(self.intensity)?;
         writer.write_bool32(!self.sawtooth)?;
-        writer.write_f32(self.mix.get::<ratio>())?;
+        writer.write_ratio(self.mix)?;
         writer.write_bool32(minimized)?;
 
-        writer.write_u32(0)?; // resonator_unknown1
-        writer.write_u32(0)?; // resonator_unknown2
+        writer.write_u32(0)?; // resonator_unknown_1
+        writer.write_u32(0)?; // resonator_unknown_2
         if self.write_version() > 1038 {
-            writer.write_u32(0)?; // resonator_unknown3
+            writer.write_u32(0)?; // resonator_unknown_3
         }
 
         Ok(())

@@ -3,44 +3,43 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.5               | 1032           |
-//! | 1.8.17              | 1032           |
+//! | 1.8.5 to 1.8.17     | 1032           |
 //! | 2.0.16              | 1049           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use uom::si::f32::{Ratio, Time};
-use uom::si::ratio::{percent, ratio};
+use uom::si::ratio::percent;
 use uom::si::time::second;
 
 use crate::Decibels;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Reverb {
     pub decay: Time,
 
-    // Decibels per second.
+    /// Decibels per second.
     pub dampen: Decibels,
 
-    pub size: f32,
-    pub width: f32,
-    pub early: f32,
+    pub size: Ratio,
+    pub width: Ratio,
+    pub early: Ratio,
     pub mix: Ratio,
 }
 
 impl Default for Reverb {
     fn default() -> Self {
-        Reverb {
+        Self {
             decay: Time::new::<second>(3.0),
             dampen: Decibels::new(25.0),
-            size: 1.0,
-            width: 1.0,
-            early: 0.25,
+            size: Ratio::new::<percent>(100.0),
+            width: Ratio::new::<percent>(100.0),
+            early: Ratio::new::<percent>(25.0),
             mix: Ratio::new::<percent>(25.0),
         }
     }
@@ -80,19 +79,19 @@ impl EffectRead for Reverb {
             ));
         }
 
-        let size = reader.read_f32()?;
-        let decay = Time::new::<second>(reader.read_f32()?);
-        let dampen = Decibels::new(reader.read_f32()?);
-        let width = reader.read_f32()?;
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
-        let early = reader.read_f32()?;
+        let size = reader.read_ratio()?;
+        let decay = reader.read_seconds()?;
+        let dampen = reader.read_decibels_db()?;
+        let width = reader.read_ratio()?;
+        let mix = reader.read_ratio()?;
+        let early = reader.read_ratio()?;
         let enabled = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
 
-        reader.expect_u32(0, "reverb_unknown1")?;
-        reader.expect_u32(0, "reverb_unknown2")?;
+        reader.expect_u32(0, "reverb_unknown_1")?;
+        reader.expect_u32(0, "reverb_unknown_2")?;
         if effect_version > 1032 {
-            reader.expect_u32(0, "reverb_unknown3")?;
+            reader.expect_u32(0, "reverb_unknown_3")?;
         }
 
         Ok(EffectReadReturn::new(
@@ -117,12 +116,12 @@ impl EffectWrite for Reverb {
         enabled: bool,
         minimized: bool,
     ) -> io::Result<()> {
-        writer.write_f32(self.size)?;
-        writer.write_f32(self.decay.get::<second>())?;
-        writer.write_f32(self.dampen.db())?;
-        writer.write_f32(self.width)?;
-        writer.write_f32(self.mix.get::<ratio>())?;
-        writer.write_f32(self.early)?;
+        writer.write_ratio(self.size)?;
+        writer.write_seconds(self.decay)?;
+        writer.write_decibels_db(self.dampen)?;
+        writer.write_ratio(self.width)?;
+        writer.write_ratio(self.mix)?;
+        writer.write_ratio(self.early)?;
         writer.write_bool32(enabled)?;
         writer.write_bool32(minimized)?;
 
@@ -155,9 +154,9 @@ mod test {
         let effect = Reverb::default();
         assert_eq!(effect.decay.get::<second>(), 3.0);
         assert_relative_eq!(effect.dampen.db(), 25.0, epsilon = 0.1);
-        assert_eq!(effect.size, 1.0);
-        assert_eq!(effect.width, 1.0);
-        assert_relative_eq!(effect.early, 0.25, epsilon = 0.01);
+        assert_eq!(effect.size.get::<percent>(), 100.0);
+        assert_eq!(effect.width.get::<percent>(), 100.0);
+        assert_relative_eq!(effect.early.get::<percent>(), 25.0, epsilon = 0.01);
         assert_relative_eq!(effect.mix.get::<percent>(), 25.0, epsilon = 0.01);
     }
 
@@ -184,10 +183,10 @@ mod test {
             let effect = snapin.effect.as_reverb().unwrap();
             assert_eq!(effect.decay.get::<second>(), 3.0);
             assert_relative_eq!(effect.dampen.db(), 25.0, epsilon = 0.1);
-            assert_eq!(effect.size, 1.0);
-            assert_eq!(effect.width, 1.0);
-            assert_relative_eq!(effect.early, 0.25, epsilon = 0.01);
-            assert_relative_eq!(effect.mix.get::<percent>(), 25.0, epsilon = 0.01);
+            assert_eq!(effect.size.get::<percent>(), 100.0);
+            assert_eq!(effect.width.get::<percent>(), 100.0);
+            assert_relative_eq!(effect.early.get::<percent>(), 24.8, epsilon = 0.1);
+            assert_relative_eq!(effect.mix.get::<percent>(), 25.0, epsilon = 0.1);
         }
     }
 
@@ -200,7 +199,7 @@ mod test {
         let effect = snapin.effect.as_reverb().unwrap();
         assert_eq!(effect.decay.get::<second>(), 1.0);
         assert_relative_eq!(effect.dampen.db(), 30.0, epsilon = 0.00001);
-        assert_eq!(effect.size, 0.75);
+        assert_eq!(effect.size.get::<percent>(), 75.0);
 
         let preset = read_effect_preset(
             "reverb",
@@ -209,8 +208,8 @@ mod test {
         .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_reverb().unwrap();
-        assert_eq!(effect.width, 0.5);
-        assert_eq!(effect.early, 0.6);
+        assert_relative_eq!(effect.width.get::<percent>(), 50.0);
+        assert_relative_eq!(effect.early.get::<percent>(), 60.0);
         assert_relative_eq!(effect.mix.get::<percent>(), 70.0, epsilon = 0.01);
 
         let preset =
@@ -227,6 +226,6 @@ mod test {
         assert!(snapin.enabled);
         assert!(snapin.minimized);
         let effect = snapin.effect.as_reverb().unwrap();
-        assert_relative_eq!(effect.size, 0.5);
+        assert_relative_eq!(effect.size.get::<percent>(), 50.0);
     }
 }

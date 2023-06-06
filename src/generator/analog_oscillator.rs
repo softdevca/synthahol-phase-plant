@@ -47,9 +47,9 @@ pub struct AnalogOscillator {
     pub phase_jitter: Ratio,
 
     /// Amplitude of the waveform. Gain is set in the Out generator.
-    pub level: f32,
+    pub level: Ratio,
     pub sync_multiplier: f32,
-    pub pulse_width: f32,
+    pub pulse_width: Ratio,
     pub unison: Unison,
     pub waveform: AnalogWaveform,
 }
@@ -134,7 +134,7 @@ mod test {
         let generator = AnalogOscillator::default();
         assert!(generator.enabled);
         assert_eq!(generator.name(), "Analog".to_owned());
-        assert_eq!(generator.level, 1.0);
+        assert_eq!(generator.level.get::<percent>(), 100.0);
         assert_eq!(generator.tuning, 0.0);
         assert_eq!(generator.harmonic, 1.0);
         assert_eq!(generator.shift, Frequency::zero());
@@ -142,7 +142,7 @@ mod test {
         assert_eq!(generator.phase_jitter, Ratio::zero());
         assert_eq!(generator.waveform, AnalogWaveform::Saw);
         assert_eq!(generator.sync_multiplier, 1.0);
-        assert_eq!(generator.pulse_width, 0.5);
+        assert_eq!(generator.pulse_width.get::<percent>(), 50.0);
         assert_eq!(generator.unison, Unison::default());
     }
 
@@ -157,7 +157,7 @@ mod test {
             let generator: &AnalogOscillator = preset.generator(1).unwrap();
             assert!(generator.enabled);
             assert_eq!(generator.name(), "Analog".to_owned());
-            assert_eq!(generator.level, 1.0);
+            assert_eq!(generator.level.get::<percent>(), 100.0);
             assert_eq!(generator.tuning, 0.0);
             assert_eq!(generator.harmonic, 1.0);
             assert_eq!(generator.shift, Frequency::zero());
@@ -165,7 +165,7 @@ mod test {
             assert_eq!(generator.phase_jitter, Ratio::zero());
             assert_eq!(generator.waveform, AnalogWaveform::Saw);
             assert_eq!(generator.sync_multiplier, 1.0);
-            assert_eq!(generator.pulse_width, 0.5);
+            assert_eq!(generator.pulse_width.get::<percent>(), 50.0);
 
             // In Phase Plant 1.8.5 the default Unison voices changed from 1 to 4.
             if preset
@@ -204,7 +204,7 @@ mod test {
         )
         .unwrap();
         let generator: &AnalogOscillator = preset.generator(1).unwrap();
-        assert_eq!(generator.level, 0.9);
+        assert_eq!(generator.level.get::<percent>(), 90.0);
         assert_eq!(generator.tuning, 11.5);
         assert_eq!(generator.harmonic, 3.0);
 
@@ -233,7 +233,7 @@ mod test {
         .unwrap();
         let generator: &AnalogOscillator = preset.generator(1).unwrap();
         assert_eq!(generator.sync_multiplier, 3.0);
-        assert_eq!(generator.pulse_width, 0.25);
+        assert_eq!(generator.pulse_width.get::<percent>(), 25.0);
     }
 
     #[test]
@@ -260,6 +260,6 @@ mod test {
         let generator: &AnalogOscillator = preset.generator(1).unwrap();
         assert!(generator.unison.enabled);
         assert_eq!(generator.unison.mode, UnisonMode::Octaves);
-        assert_relative_eq!(generator.unison.bias, 0.35);
+        assert_relative_eq!(generator.unison.bias.get::<percent>(), 35.0);
     }
 }

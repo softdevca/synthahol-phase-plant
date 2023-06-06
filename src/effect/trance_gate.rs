@@ -6,22 +6,21 @@
 //! | 1.8.14              | 1038           |
 //! | 2.0.16              | 1049           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
-use strum::IntoEnumIterator;
-use strum_macros::EnumIter;
+use strum_macros::FromRepr;
 use uom::si::f32::{Ratio, Time};
-use uom::si::ratio::{percent, ratio};
-use uom::si::time::{millisecond, second};
+use uom::si::ratio::percent;
+use uom::si::time::millisecond;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
-#[derive(Clone, Copy, Debug, EnumIter, Eq, PartialEq)]
-#[repr(u8)]
+#[derive(Clone, Copy, Debug, FromRepr, Eq, PartialEq)]
+#[repr(u32)]
 pub enum PatternResolution {
     // The discriminants correspond to the file format.
     Eighth,
@@ -34,14 +33,13 @@ pub enum PatternResolution {
 }
 
 impl PatternResolution {
-    fn from_id(id: u32) -> Result<PatternResolution, Error> {
-        match PatternResolution::iter().find(|mode| *mode as u32 == id) {
-            Some(mode) => Ok(mode),
-            None => Err(Error::new(
+    pub(crate) fn from_id(id: u32) -> Result<Self, Error> {
+        Self::from_repr(id).ok_or_else(|| {
+            Error::new(
                 ErrorKind::InvalidData,
-                format!("Pattern resolution {} not recognized", id),
-            )),
-        }
+                format!("Unknown pattern resolution mode {id}"),
+            )
+        })
     }
 }
 
@@ -75,7 +73,7 @@ pub struct TranceGate {
     pub step_tied: [[bool; Self::STEPS_MAX]; Self::PATTERN_COUNT],
     pub attack: Time,
     pub decay: Time,
-    pub sustain: f32,
+    pub sustain: Ratio,
     pub release: Time,
     pub resolution: PatternResolution,
     pub mix: Ratio,
@@ -224,14 +222,14 @@ impl TranceGate {
 
 impl Default for TranceGate {
     fn default() -> Self {
-        TranceGate {
+        Self {
             pattern_number: 1,
             step_count: TranceGate::STEP_COUNT_DEFAULT,
             step_enabled: TranceGate::STEP_ENABLED_DEFAULT,
             step_tied: TranceGate::STEP_TIED_DEFAULT,
             attack: Time::new::<millisecond>(13.2),
             decay: Time::new::<millisecond>(55.6),
-            sustain: 0.50,
+            sustain: Ratio::new::<percent>(50.0),
             release: Time::new::<millisecond>(17.6),
             resolution: PatternResolution::ThirtySecond,
             mix: Ratio::new::<percent>(100.0),
@@ -274,11 +272,11 @@ impl EffectRead for TranceGate {
         }
 
         let enabled = reader.read_bool32()?;
-        let attack = Time::new::<second>(reader.read_f32()?);
-        let decay = Time::new::<second>(reader.read_f32()?);
-        let sustain = reader.read_f32()?;
-        let release = Time::new::<second>(reader.read_f32()?);
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
+        let attack = reader.read_seconds()?;
+        let decay = reader.read_seconds()?;
+        let sustain = reader.read_ratio()?;
+        let release = reader.read_seconds()?;
+        let mix = reader.read_ratio()?;
         let resolution = PatternResolution::from_id(reader.read_u32()?)?;
         let pattern_number = reader.read_u32()?;
 
@@ -295,10 +293,10 @@ impl EffectRead for TranceGate {
 
         let minimized = reader.read_bool32()?;
 
-        reader.expect_u32(0, "trance_gate_unknown1")?;
-        reader.expect_u32(0, "trance_gate_unknown2")?;
+        reader.expect_u32(0, "trance_gate_unknown_1")?;
+        reader.expect_u32(0, "trance_gate_unknown_2")?;
         if effect_version > 1038 {
-            reader.expect_u32(0, "trance_gate_unknown3")?;
+            reader.expect_u32(0, "trance_gate_unknown_3")?;
         }
 
         Ok(EffectReadReturn::new(
@@ -328,11 +326,11 @@ impl EffectWrite for TranceGate {
         minimized: bool,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
-        writer.write_f32(self.attack.get::<second>())?;
-        writer.write_f32(self.decay.get::<second>())?;
-        writer.write_f32(self.sustain)?;
-        writer.write_f32(self.release.get::<second>())?;
-        writer.write_f32(self.mix.get::<ratio>())?;
+        writer.write_seconds(self.attack)?;
+        writer.write_seconds(self.decay)?;
+        writer.write_ratio(self.sustain)?;
+        writer.write_seconds(self.release)?;
+        writer.write_ratio(self.mix)?;
         writer.write_u32(self.resolution as u32)?;
         writer.write_u32(self.pattern_number)?;
         for pattern_index in 0..TranceGate::PATTERN_COUNT {
@@ -345,10 +343,10 @@ impl EffectWrite for TranceGate {
 
         writer.write_bool32(minimized)?;
 
-        writer.write_u32(0)?; // trace_gate_unknown1
-        writer.write_u32(0)?; // trace_gate_unknown2
+        writer.write_u32(0)?; // trace_gate_unknown_1
+        writer.write_u32(0)?; // trace_gate_unknown_2
         if self.write_version() > 1038 {
-            writer.write_u32(0)?; // trace_gate_unknown3
+            writer.write_u32(0)?; // trace_gate_unknown_3
         }
 
         Ok(())
@@ -378,7 +376,7 @@ mod test {
         assert_eq!(effect.step_tied, TranceGate::STEP_TIED_DEFAULT);
         assert_eq!(effect.attack.get::<millisecond>(), 13.2);
         assert_eq!(effect.decay.get::<millisecond>(), 55.6);
-        assert_eq!(effect.sustain, 0.50);
+        assert_eq!(effect.sustain.get::<percent>(), 50.0);
         assert_eq!(effect.release.get::<millisecond>(), 17.6);
         assert_eq!(effect.resolution, PatternResolution::ThirtySecond);
         assert_eq!(effect.mix.get::<percent>(), 100.0);
@@ -418,7 +416,7 @@ mod test {
             assert_eq!(effect.step_tied, TranceGate::STEP_TIED_DEFAULT);
             assert_relative_eq!(effect.attack.get::<millisecond>(), 13.2, epsilon = 0.1);
             assert_relative_eq!(effect.decay.get::<millisecond>(), 55.6, epsilon = 0.1);
-            assert_relative_eq!(effect.sustain, 0.50, epsilon = 0.001);
+            assert_relative_eq!(effect.sustain.get::<percent>(), 50.0, epsilon = 0.001);
             assert_relative_eq!(effect.release.get::<millisecond>(), 17.6, epsilon = 0.1);
             assert_eq!(effect.resolution, PatternResolution::ThirtySecond);
             assert_eq!(effect.mix.get::<percent>(), 100.0);
@@ -440,18 +438,18 @@ mod test {
             "trance_gate",
             "trance_gate-count11-sustain80-release25-1.8.14.phaseplant",
         )
-        .unwrap();
+            .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_trance_gate().unwrap();
         assert_eq!(effect.step_count[0], 11);
-        assert_relative_eq!(effect.sustain, 0.80);
+        assert_relative_eq!(effect.sustain.get::<percent>(), 80.0);
         assert_relative_eq!(effect.release.get::<millisecond>(), 25.0, epsilon = 0.001);
 
         let preset = read_effect_preset(
             "trance_gate",
             "trance_gate-eighth-mix66-disabled-1.8.14.phaseplant",
         )
-        .unwrap();
+            .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         assert!(!snapin.enabled);
         assert!(!snapin.minimized);
@@ -463,7 +461,7 @@ mod test {
             "trance_gate",
             "trance_gate-selected3-attack20-decay75-minimized-1.8.14.phaseplant",
         )
-        .unwrap();
+            .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         assert!(snapin.enabled);
         assert!(snapin.minimized);
@@ -479,7 +477,7 @@ mod test {
             "trance_gate",
             "trance_gate-eighth-selected7-2.0.16.phaseplant",
         )
-        .unwrap();
+            .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_trance_gate().unwrap();
         assert_eq!(effect.resolution, PatternResolution::Eighth);
@@ -489,7 +487,7 @@ mod test {
             "trance_gate",
             "trance_gate-sixteenth-all_off-2.0.16.phaseplant",
         )
-        .unwrap();
+            .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_trance_gate().unwrap();
         assert_eq!(effect.resolution, PatternResolution::Sixteenth);
@@ -510,7 +508,7 @@ mod test {
             "trance_gate",
             "trance_gate-sixteenth_triplet-all_on-2.0.16.phaseplant",
         )
-        .unwrap();
+            .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_trance_gate().unwrap();
         assert_eq!(effect.resolution, PatternResolution::SixteenthTriplet);

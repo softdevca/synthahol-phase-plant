@@ -8,7 +8,7 @@
 //! | 2.0.12              | 1012           |
 //! | 2.0.16              | 1013           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -17,8 +17,8 @@ use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::{percent, ratio};
 use uom::si::time::{millisecond, second};
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DualDelay {
@@ -83,13 +83,13 @@ impl EffectRead for DualDelay {
             ));
         }
 
-        let time = Time::new::<second>(reader.read_f32()?);
-        let second_delay_length = Ratio::new::<ratio>(reader.read_f32()?);
-        let feedback = Ratio::new::<ratio>(reader.read_f32()?);
-        let crosstalk = Ratio::new::<ratio>(reader.read_f32()?);
-        let spread = Ratio::new::<ratio>(reader.read_f32()?);
-        let tone = Ratio::new::<ratio>(reader.read_f32()?);
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
+        let time = reader.read_seconds()?;
+        let second_delay_length = reader.read_ratio()?;
+        let feedback = reader.read_ratio()?;
+        let crosstalk = reader.read_ratio()?;
+        let spread = reader.read_ratio()?;
+        let tone = reader.read_ratio()?;
+        let mix = reader.read_ratio()?;
         let enabled = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
 
@@ -100,7 +100,7 @@ impl EffectRead for DualDelay {
         reader.expect_u32(4, "dual_delay_unknown_7")?;
 
         let sync = reader.read_bool32()?;
-        let duck = Ratio::new::<ratio>(reader.read_f32()?);
+        let duck = reader.read_ratio()?;
 
         Ok(EffectReadReturn::new(
             Box::new(DualDelay {
@@ -133,7 +133,7 @@ impl EffectWrite for DualDelay {
         writer.write_f32(self.crosstalk.get::<ratio>())?;
         writer.write_f32(self.spread.get::<ratio>())?;
         writer.write_f32(self.tone.get::<ratio>())?;
-        writer.write_f32(self.mix.get::<ratio>())?;
+        writer.write_ratio(self.mix)?;
         writer.write_bool32(enabled)?;
         writer.write_bool32(minimized)?;
 

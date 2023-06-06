@@ -6,8 +6,8 @@
 
 use std::any::Any;
 
-use crate::generator::{Generator, GeneratorId, GeneratorMode};
 use crate::*;
+use crate::generator::{Generator, GeneratorId, GeneratorMode};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AuxRouting {
@@ -15,7 +15,7 @@ pub struct AuxRouting {
     pub enabled: bool,
     pub name: String,
     pub invert: bool,
-    pub level: f32,
+    pub level: Ratio,
 }
 
 impl Default for AuxRouting {
@@ -85,7 +85,7 @@ mod test {
         let generator = AuxRouting::default();
         assert!(generator.enabled);
         assert_eq!(generator.name, "Aux".to_owned());
-        assert_eq!(generator.level, 1.0);
+        assert_eq!(generator.level.get::<percent>(), 100.0);
         assert!(!generator.invert);
     }
 
@@ -100,7 +100,7 @@ mod test {
             let generator: &AuxRouting = preset.generator(1).unwrap();
             assert!(generator.enabled);
             assert_eq!(generator.name, "Aux".to_owned());
-            assert_eq!(generator.level, 1.0);
+            assert_eq!(generator.level.get::<percent>(), 100.0);
             assert!(!generator.invert);
         }
     }
@@ -122,7 +122,7 @@ mod test {
         .unwrap();
         let generator: &AuxRouting = preset.generator(1).unwrap();
         assert!(generator.enabled);
-        assert_eq!(generator.level, 0.25);
+        assert_eq!(generator.level.get::<percent>(), 25.0);
         assert!(generator.invert);
     }
 }

@@ -8,7 +8,7 @@
 //! | 1.8.13 to 1.8.16    | 1040           |
 //! | 2.0.16              | 1051           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -19,8 +19,8 @@ use uom::si::frequency::hertz;
 
 use crate::Decibels;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Copy, Clone, Debug, FromRepr, Eq, PartialEq)]
 #[repr(u32)]
@@ -82,7 +82,7 @@ impl dyn Effect {
 
 impl Default for Filter {
     fn default() -> Self {
-        Filter {
+        Self {
             filter_mode: FilterMode::LowPass,
             cutoff: Frequency::new::<hertz>(620.0), // Default is 440.0 in generators and 620.0 in effects
             q: 0.707,
@@ -121,9 +121,9 @@ impl EffectRead for Filter {
 
         let enabled = reader.read_bool32()?;
         let mode = FilterMode::from_id(reader.read_u32()?)?;
-        let cutoff = Frequency::new::<hertz>(reader.read_f32()?);
+        let cutoff = reader.read_hertz()?;
         let q = reader.read_f32()?;
-        let gain = Decibels::new(reader.read_f32()?);
+        let gain = reader.read_decibels_db()?;
         let minimized = reader.read_bool32()?;
 
         reader.expect_u32(0, "filter_unknown1")?;
@@ -186,9 +186,9 @@ impl EffectWrite for Filter {
 mod test {
     use approx::assert_relative_eq;
 
+    use crate::Decibels;
     use crate::effect::{Bitcrush, Filter};
     use crate::test::read_effect_preset;
-    use crate::Decibels;
 
     use super::*;
 

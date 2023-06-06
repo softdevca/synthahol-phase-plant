@@ -189,7 +189,7 @@ impl Lane {
 
 impl Default for Lane {
     fn default() -> Self {
-        Lane {
+        Self {
             enabled: true,
             snapins: Vec::new(),
             destination: LaneDestination::Master,
@@ -237,7 +237,7 @@ pub struct Preset {
 
 impl Default for Preset {
     fn default() -> Self {
-        Preset {
+        Self {
             format_version: WRITE_SAME_AS.format_version(),
             mod_wheel_value: Ratio::zero(),
             glide_enabled: false,
@@ -280,8 +280,8 @@ pub(crate) mod test {
     use std::io::{Cursor, Read, Seek, SeekFrom, Write};
     use std::path::Path;
 
-    use crate::tests::test_data_path;
     use crate::*;
+    use crate::tests::test_data_path;
 
     fn load_preset(components: &[&str]) -> io::Result<Preset> {
         let mut path = test_data_path(&[]);
@@ -509,10 +509,10 @@ pub(crate) mod test {
         assert!(!unison.enabled);
         assert_eq!(unison.voices, 4);
         assert_eq!(unison.mode, UnisonMode::Smooth);
-        assert_eq!(unison.detune, 25.0);
-        assert_eq!(unison.spread, 0.0);
-        assert_eq!(unison.blend, 1.0);
-        assert_eq!(unison.bias, 0.0);
+        assert_eq!(unison.detune_cents, 25.0);
+        assert_eq!(unison.spread.get::<percent>(), 0.0);
+        assert_eq!(unison.blend.get::<percent>(), 100.0);
+        assert_eq!(unison.bias.get::<percent>(), 0.0);
     }
 }
 

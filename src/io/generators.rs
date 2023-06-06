@@ -6,10 +6,10 @@ use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 use uom::si::time::{millisecond, second};
 
+use crate::*;
 use crate::effect::{Distortion, Filter};
 use crate::generator::*;
 use crate::point::{CurvePoint, CurvePointMode};
-use crate::*;
 
 // TODO: Make GeneratorBlock crate-private.
 
@@ -41,35 +41,37 @@ pub struct GeneratorBlock {
     /// Percentage of 360 degrees.
     pub phase_jitter: Ratio,
 
-    pub level: f32,
+    pub level: Ratio,
     pub unison: Unison,
+
+    // Analog generator
     pub analog_waveform: AnalogWaveform,
     pub sync_multiplier: f32,
-    pub pulse_width: f32,
+    pub pulse_width: Ratio,
 
     /// Where the sample starts playing
-    pub offset_position: f32,
+    pub offset_position: Ratio,
     pub offset_locked: bool,
 
     /// Beginning of the loop area
-    pub loop_start_position: f32,
-
+    pub loop_start_position: Ratio,
     pub loop_locked: bool,
-    pub loop_length: f32,
+    pub loop_length: Ratio,
     pub loop_enabled: bool,
 
-    pub crossfade_amount: f32,
+    pub crossfade_amount: Ratio,
     pub invert: bool,
     pub filter_effect: Filter,
     pub distortion_effect: Distortion,
-    pub band_limit: f32,
+    pub band_limit: Frequency,
 
     /// Mix/aux level
-    pub mix_level: f32,
+    pub mix_level: Ratio,
 
+    // Noise generator
     pub noise_waveform: NoiseWaveform,
-    pub noise_slope: f32,
-    pub stereo: f32,
+    pub noise_slope: Decibels,
+    pub stereo: Ratio,
     pub seed_mode: SeedMode,
     pub pan: Ratio,
 
@@ -156,10 +158,10 @@ impl GeneratorBlock {
 impl Default for GeneratorBlock {
     fn default() -> Self {
         let mut distortion_effect = Distortion::new();
-        distortion_effect.drive = Decibels::new(1.0);
-        distortion_effect.dynamics = 0.0;
+        distortion_effect.drive = Decibels::from_linear(1.0);
+        distortion_effect.dynamics = Ratio::zero();
 
-        GeneratorBlock {
+        Self {
             id: 0,
             mode: GeneratorMode::Blank,
             name: "".to_owned(),
@@ -177,18 +179,18 @@ impl Default for GeneratorBlock {
             },
             phase_offset: Ratio::zero(),
             phase_jitter: Ratio::zero(),
-            level: 1.0,
+            level: Ratio::new::<percent>(100.0),
             unison: Default::default(),
             analog_waveform: AnalogWaveform::Saw,
             sync_multiplier: 1.0,
-            pulse_width: 0.5,
-            offset_position: 0.0,
+            pulse_width: Ratio::new::<percent>(50.0),
+            offset_position: Ratio::zero(),
             offset_locked: false,
-            loop_start_position: 0.0,
+            loop_start_position: Ratio::zero(),
             loop_locked: false,
-            loop_length: 0.0,
+            loop_length: Ratio::zero(),
             loop_enabled: false,
-            crossfade_amount: 0.0,
+            crossfade_amount: Ratio::zero(),
             invert: false,
             distortion_effect,
             filter_effect: Filter {
@@ -196,10 +198,10 @@ impl Default for GeneratorBlock {
                 gain: Decibels::ZERO,
                 ..Default::default()
             },
-            mix_level: 1.0,
+            mix_level: Ratio::new::<percent>(100.0),
             noise_waveform: NoiseWaveform::Colored,
-            noise_slope: 3.0103,
-            stereo: 0.0,
+            noise_slope: Decibels::new(3.0103),
+            stereo: Ratio::zero(),
             seed_mode: Default::default(),
             pan: Ratio::zero(),
 
@@ -208,7 +210,7 @@ impl Default for GeneratorBlock {
             output_destination: OutputDestination::Lane1,
 
             envelope: Default::default(),
-            band_limit: 22050.0,
+            band_limit: Frequency::new::<hertz>(22050.0),
 
             wavetable_contents: Vec::new(),
             wavetable_edited: false,

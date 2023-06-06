@@ -7,17 +7,17 @@
 //! | 2.0.12              | 1048           |
 //! | 2.0.16              | 1049           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use uom::num::Zero;
 use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
-use uom::si::ratio::{percent, ratio};
+use uom::si::ratio::percent;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Bitcrush {
@@ -85,7 +85,7 @@ impl EffectRead for Bitcrush {
         }
 
         let enabled = reader.read_bool32()?;
-        let frequency = Frequency::new::<hertz>(reader.read_f32()?);
+        let frequency = reader.read_hertz()?;
 
         let bits = reader.read_f32()?;
         if bits < 0.0 {
@@ -95,11 +95,11 @@ impl EffectRead for Bitcrush {
             ));
         }
 
-        let adc_quality = Ratio::new::<ratio>(reader.read_f32()?);
-        let dac_quality = Ratio::new::<ratio>(reader.read_f32()?);
-        let dither = Ratio::new::<ratio>(reader.read_f32()?);
-        let quantize = Ratio::new::<ratio>(reader.read_f32()?);
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
+        let adc_quality = reader.read_ratio()?;
+        let dac_quality = reader.read_ratio()?;
+        let dither = reader.read_ratio()?;
+        let quantize = reader.read_ratio()?;
+        let mix = reader.read_ratio()?;
         let minimized = reader.read_bool32()?;
 
         reader.expect_u32(0, "bitcrush_unknown_1")?;
@@ -130,13 +130,13 @@ impl EffectWrite for Bitcrush {
         minimized: bool,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
-        writer.write_f32(self.frequency.get::<hertz>())?;
+        writer.write_hertz(self.frequency)?;
         writer.write_f32(self.bits)?;
-        writer.write_f32(self.adc_quality.get::<ratio>())?;
-        writer.write_f32(self.dac_quality.get::<ratio>())?;
-        writer.write_f32(self.dither.get::<ratio>())?;
-        writer.write_f32(self.quantize.get::<ratio>())?;
-        writer.write_f32(self.mix.get::<ratio>())?;
+        writer.write_ratio(self.adc_quality)?;
+        writer.write_ratio(self.dac_quality)?;
+        writer.write_ratio(self.dither)?;
+        writer.write_ratio(self.quantize)?;
+        writer.write_ratio(self.mix)?;
         writer.write_bool32(minimized)?;
 
         writer.write_u32(0)?;

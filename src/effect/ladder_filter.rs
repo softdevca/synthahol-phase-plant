@@ -3,29 +3,32 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.5               | 1029           |
-//! | 1.8.14              | 1029           |
+//! | 1.8.5 to 1.8.14     | 1029           |
 //! | 2.0.16              | 1040           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use uom::num::Zero;
+use uom::si::f32::{Frequency, Ratio};
+use uom::si::frequency::hertz;
+
 use crate::Decibels;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LadderFilter {
-    pub cutoff: f32,
+    pub cutoff: Frequency,
     pub saturate: bool,
-    pub resonance: f32,
+    pub resonance: Ratio,
 
     /// 0.0 to 45.0 dB
     pub drive: Decibels,
 
-    pub bias: f32,
+    pub bias: Ratio,
 
     /// If the filter is transistor or diode.
     pub diode: bool,
@@ -39,11 +42,11 @@ impl LadderFilter {
 impl Default for LadderFilter {
     fn default() -> Self {
         Self {
-            cutoff: 440.0,
+            cutoff: Frequency::new::<hertz>(440.0),
             saturate: false,
-            resonance: 0.0,
+            resonance: Ratio::zero(),
             drive: Decibels::ZERO,
-            bias: 0.0,
+            bias: Ratio::zero(),
             diode: false,
         }
     }
@@ -83,10 +86,10 @@ impl EffectRead for LadderFilter {
             ));
         }
 
-        let cutoff = reader.read_f32()?;
-        let resonance = reader.read_f32()?;
+        let cutoff = reader.read_hertz()?;
+        let resonance = reader.read_ratio()?;
 
-        let drive = Decibels::from_linear(reader.read_f32()?);
+        let drive = reader.read_decibels_linear()?;
         if drive < LadderFilter::DRIVE_MIN {
             return Err(Error::new(
                 ErrorKind::InvalidData,
@@ -102,7 +105,7 @@ impl EffectRead for LadderFilter {
             ));
         }
 
-        let bias = reader.read_f32()?;
+        let bias = reader.read_ratio()?;
         let diode = reader.read_bool32()?;
         let saturate = reader.read_bool32()?;
         let enabled = reader.read_bool32()?;
@@ -136,10 +139,10 @@ impl EffectWrite for LadderFilter {
         enabled: bool,
         minimized: bool,
     ) -> io::Result<()> {
-        writer.write_f32(self.cutoff)?;
-        writer.write_f32(self.resonance)?;
+        writer.write_hertz(self.cutoff)?;
+        writer.write_ratio(self.resonance)?;
         writer.write_f32(self.drive.linear())?;
-        writer.write_f32(self.bias)?;
+        writer.write_ratio(self.bias)?;
         writer.write_bool32(self.diode)?;
         writer.write_bool32(self.saturate)?;
         writer.write_bool32(enabled)?;
@@ -162,20 +165,21 @@ impl EffectWrite for LadderFilter {
 #[cfg(test)]
 mod test {
     use approx::assert_relative_eq;
+    use uom::si::ratio::percent;
 
+    use crate::Decibels;
     use crate::effect::Filter;
     use crate::test::read_effect_preset;
-    use crate::Decibels;
 
     use super::*;
 
     #[test]
     fn default() {
         let effect = LadderFilter::default();
-        assert_eq!(effect.cutoff, 440.0);
-        assert_eq!(effect.resonance, 0.0);
+        assert_eq!(effect.cutoff.get::<hertz>(), 440.0);
+        assert_eq!(effect.resonance.get::<percent>(), 0.0);
         assert_eq!(effect.drive, Decibels::ZERO);
-        assert_eq!(effect.bias, 0.0);
+        assert_eq!(effect.bias.get::<percent>(), 0.0);
         assert!(!effect.saturate);
         assert!(!effect.diode);
     }
@@ -234,8 +238,8 @@ mod test {
         assert!(snapin.enabled);
         assert!(!snapin.minimized);
         let effect = snapin.effect.as_ladder_filter().unwrap();
-        assert_relative_eq!(effect.cutoff, 220.0, epsilon = 0.01);
-        assert_relative_eq!(effect.resonance, 0.80, epsilon = 0.01);
+        assert_relative_eq!(effect.cutoff.get::<hertz>(), 220.0, epsilon = 0.01);
+        assert_relative_eq!(effect.resonance.get::<percent>(), 80.0, epsilon = 0.01);
         assert!(effect.diode);
 
         let preset = read_effect_preset(
@@ -246,7 +250,7 @@ mod test {
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_ladder_filter().unwrap();
         assert_relative_eq!(effect.drive.db(), 5.0, epsilon = 0.0001);
-        assert_relative_eq!(effect.bias, 0.15, epsilon = 0.0001);
+        assert_relative_eq!(effect.bias.get::<percent>(), 15.0, epsilon = 0.0001);
         assert!(effect.saturate);
     }
 
@@ -260,6 +264,6 @@ mod test {
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_ladder_filter().unwrap();
         assert_relative_eq!(effect.drive.db(), 45.0, epsilon = 0.1);
-        assert_relative_eq!(effect.resonance, 0.65, epsilon = 0.01);
+        assert_relative_eq!(effect.resonance.get::<percent>(), 64.5, epsilon = 0.1);
     }
 }

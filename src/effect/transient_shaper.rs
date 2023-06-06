@@ -3,36 +3,39 @@
 
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.5               | 1027           |
-//! | 1.8.13              | 1027           |
+//! | 1.8.5 to 1.8.13     | 1027           |
 //! | 2.0.16              | 1037           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use uom::num::Zero;
+use uom::si::f32::Ratio;
+use uom::si::ratio::percent;
+
 use crate::effect::SidechainMode;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransientShaper {
-    pub attack: f32,
-    pub pump: f32,
-    pub sustain: f32,
-    pub speed: f32,
+    pub attack: Ratio,
+    pub pump: Ratio,
+    pub sustain: Ratio,
+    pub speed: Ratio,
     pub clip: bool,
     pub sidechain_mode: SidechainMode,
 }
 
 impl Default for TransientShaper {
     fn default() -> Self {
-        TransientShaper {
-            attack: 0.0,
-            pump: 0.0,
-            sustain: 0.0,
-            speed: 1.0,
+        Self {
+            attack: Ratio::zero(),
+            pump: Ratio::zero(),
+            sustain: Ratio::zero(),
+            speed: Ratio::new::<percent>(100.0),
             clip: false,
             sidechain_mode: SidechainMode::Off,
         }
@@ -73,10 +76,10 @@ impl EffectRead for TransientShaper {
             ));
         }
 
-        let attack = reader.read_f32()?;
-        let pump = reader.read_f32()?;
-        let sustain = reader.read_f32()?;
-        let speed = reader.read_f32()?;
+        let attack = reader.read_ratio()?;
+        let pump = reader.read_ratio()?;
+        let sustain = reader.read_ratio()?;
+        let speed = reader.read_ratio()?;
         let clip = reader.read_bool32()?;
         let enabled = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
@@ -119,10 +122,10 @@ impl EffectWrite for TransientShaper {
         enabled: bool,
         minimized: bool,
     ) -> io::Result<()> {
-        writer.write_f32(self.attack)?;
-        writer.write_f32(self.pump)?;
-        writer.write_f32(self.sustain)?;
-        writer.write_f32(self.speed)?;
+        writer.write_ratio(self.attack)?;
+        writer.write_ratio(self.pump)?;
+        writer.write_ratio(self.sustain)?;
+        writer.write_ratio(self.speed)?;
         writer.write_bool32(self.clip)?;
         writer.write_bool32(enabled)?;
         writer.write_bool32(minimized)?;
@@ -154,10 +157,10 @@ mod test {
     #[test]
     fn default() {
         let effect = TransientShaper::default();
-        assert_eq!(effect.attack, 0.0);
-        assert_eq!(effect.pump, 0.0);
-        assert_eq!(effect.sustain, 0.0);
-        assert_eq!(effect.speed, 1.0);
+        assert_eq!(effect.attack.get::<percent>(), 0.0);
+        assert_eq!(effect.pump.get::<percent>(), 0.0);
+        assert_eq!(effect.sustain.get::<percent>(), 0.0);
+        assert_eq!(effect.speed.get::<percent>(), 100.0);
         assert!(!effect.clip);
         assert_eq!(effect.sidechain_mode, SidechainMode::Off);
     }
@@ -196,9 +199,9 @@ mod test {
         assert!(snapin.enabled);
         assert!(!snapin.minimized);
         let effect = snapin.effect.as_transient_shaper().unwrap();
-        assert_relative_eq!(effect.attack, 0.10);
-        assert_relative_eq!(effect.pump, 0.20);
-        assert_relative_eq!(effect.sustain, 0.30);
+        assert_relative_eq!(effect.attack.get::<percent>(), 10.0, epsilon = 0.0001);
+        assert_relative_eq!(effect.pump.get::<percent>(), 20.0, epsilon = 0.0001);
+        assert_relative_eq!(effect.sustain.get::<percent>(), 30.0, epsilon = 0.0001);
 
         let preset = read_effect_preset(
             "transient_shaper",
@@ -210,7 +213,7 @@ mod test {
         assert!(!snapin.minimized);
         let effect = snapin.effect.as_transient_shaper().unwrap();
         assert!(effect.clip);
-        assert_relative_eq!(effect.attack, -1.0, epsilon = 0.0001);
+        assert_relative_eq!(effect.attack.get::<percent>(), -100.0, epsilon = 0.01);
 
         let preset = read_effect_preset(
             "transient_shaper",
@@ -232,6 +235,6 @@ mod test {
         assert!(!snapin.enabled);
         assert!(!snapin.minimized);
         let effect = snapin.effect.as_transient_shaper().unwrap();
-        assert_relative_eq!(effect.speed, 5.0);
+        assert_relative_eq!(effect.speed.get::<percent>(), 500.0);
     }
 }

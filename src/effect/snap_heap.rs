@@ -8,22 +8,22 @@
 //! | 2.0.12              | 1050           |
 //! | 2.0.16 to 2.1.0     | 1051           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
+use crate::{Decibels, MacroControl};
 use crate::effect::ExternalInputMode;
-use crate::MacroControl;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SnapHeap {
-    pub gain: f32,
+    pub gain: Decibels,
     pub mix: Ratio,
     pub external_input_mode: ExternalInputMode,
     pub macro_controls: [MacroControl; MacroControl::COUNT],
@@ -31,8 +31,8 @@ pub struct SnapHeap {
 
 impl Default for SnapHeap {
     fn default() -> Self {
-        SnapHeap {
-            gain: 1.0,
+        Self {
+            gain: Decibels::ZERO,
             mix: Ratio::new::<percent>(100.0),
             external_input_mode: ExternalInputMode::Off,
             macro_controls: MacroControl::defaults(),
@@ -119,7 +119,7 @@ mod test {
     #[test]
     fn default() {
         let effect = SnapHeap::default();
-        assert_eq!(effect.gain, 1.0);
+        assert_eq!(effect.gain.db(), 0.0);
         assert_eq!(effect.mix.get::<percent>(), 100.0);
         assert_eq!(effect.external_input_mode, ExternalInputMode::Off);
         assert_eq!(effect.macro_controls[0].value, 0.0);
@@ -190,8 +190,7 @@ mod test {
         assert!(!snapin.enabled);
         assert!(!snapin.minimized);
         let effect = snapin.effect.as_snap_heap().unwrap();
-        assert_relative_eq!(effect.gain, 1.7782799);
-        // 5.0 dB
+        assert_relative_eq!(effect.gain.db(), 5.0);
         assert_relative_eq!(effect.mix.get::<percent>(), 25.0);
 
         let preset = read_effect_preset(

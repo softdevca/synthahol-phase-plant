@@ -1,29 +1,26 @@
 //! [Reverser](https://kilohearts.com/products/reverser) is a reversed echo.
-
-// Phase Plant 1.8.5 to 1.8.13 contains version 1033.
-
+//!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.5               | 1033           |
-//! | 1.8.13              | 1033           |
+//! | 1.8.5 to 1.8.13     | 1033           |
 //! | 2.0.16              | 1044           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use uom::si::f32::{Ratio, Time};
-use uom::si::ratio::{percent, ratio};
+use uom::si::ratio::percent;
 use uom::si::time::{millisecond, second};
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Reverser {
     pub time: Time,
     pub sync: bool,
-    pub crossfade: f32,
+    pub crossfade: Ratio,
     pub mix: Ratio,
     unknown2: u32,
     unknown3: u32,
@@ -31,10 +28,10 @@ pub struct Reverser {
 
 impl Default for Reverser {
     fn default() -> Self {
-        Reverser {
+        Self {
             time: Time::new::<millisecond>(200.0),
             sync: true,
-            crossfade: 0.1,
+            crossfade: Ratio::new::<percent>(10.0),
             mix: Ratio::new::<percent>(50.0),
             unknown2: 4,
             unknown3: 4,
@@ -76,21 +73,21 @@ impl EffectRead for Reverser {
             ));
         }
 
-        let time = Time::new::<second>(reader.read_f32()?);
+        let time = reader.read_seconds()?;
 
         let unknown2 = reader.read_u32()?;
         let unknown3 = reader.read_u32()?;
 
         let sync = reader.read_bool32()?;
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
-        let crossfade = reader.read_f32()?;
+        let mix = reader.read_ratio()?;
+        let crossfade = reader.read_ratio()?;
         let enabled = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
 
-        reader.expect_u32(0, "reverser_unknown5")?;
-        reader.expect_u32(0, "reverser_unknown6")?;
+        reader.expect_u32(0, "reverser_unknown_1")?;
+        reader.expect_u32(0, "reverser_unknown_2")?;
         if effect_version > 1038 {
-            reader.expect_u32(0, "reverser_unknown7")?;
+            reader.expect_u32(0, "reverser_unknown_3")?;
         }
 
         Ok(EffectReadReturn::new(
@@ -121,8 +118,8 @@ impl EffectWrite for Reverser {
         writer.write_u32(self.unknown3)?;
 
         writer.write_bool32(self.sync)?;
-        writer.write_f32(self.mix.get::<ratio>())?;
-        writer.write_f32(self.crossfade)?;
+        writer.write_ratio(self.mix)?;
+        writer.write_ratio(self.crossfade)?;
         writer.write_bool32(enabled)?;
         writer.write_bool32(minimized)?;
 
@@ -154,8 +151,8 @@ mod test {
         let effect = Reverser::default();
         assert_eq!(effect.time.get::<second>(), 0.2);
         assert!(effect.sync);
-        assert_eq!(effect.crossfade, 0.1);
-        assert_eq!(effect.mix.get::<percent>(), 50.0);
+        assert_relative_eq!(effect.crossfade.get::<percent>(), 10.0);
+        assert_relative_eq!(effect.mix.get::<percent>(), 50.0);
     }
 
     #[test]
@@ -176,7 +173,7 @@ mod test {
             let effect = snapin.effect.as_reverser().unwrap();
             assert!(effect.sync);
             assert_relative_eq!(effect.time.get::<millisecond>(), 200.0, epsilon = 0.001);
-            assert_relative_eq!(effect.crossfade, 0.1, epsilon = 0.001);
+            assert_relative_eq!(effect.crossfade.get::<percent>(), 10.0, epsilon = 0.001);
             assert_relative_eq!(effect.mix.get::<percent>(), 50.0, epsilon = 0.001);
         }
     }
@@ -193,7 +190,7 @@ mod test {
         assert!(!snapin.minimized);
         let effect = snapin.effect.as_reverser().unwrap();
         assert_relative_eq!(effect.time.get::<millisecond>(), 100.0, epsilon = 0.001);
-        assert_relative_eq!(effect.crossfade, 0.25, epsilon = 0.001);
+        assert_relative_eq!(effect.crossfade.get::<percent>(), 25.0, epsilon = 0.001);
         assert_relative_eq!(effect.mix.get::<percent>(), 33.0, epsilon = 0.001);
     }
 }

@@ -2,38 +2,38 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.5               | 1037           |
-//! | 1.8.14              | 1037           |
+//! | 1.8.5 to 1.8.14     | 1037           |
 //! | 2.0.16              | 1048           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
-use uom::si::f32::Ratio;
-use uom::si::ratio::{percent, ratio};
+use uom::si::f32::{Frequency, Ratio};
+use uom::si::frequency::hertz;
+use uom::si::ratio::percent;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Phaser {
-    pub cutoff: f32,
-    pub rate: f32,
-    pub depth: f32,
+    pub cutoff: Frequency,
+    pub rate: Frequency,
+    pub depth: Ratio,
     pub order: u32,
-    pub spread: f32,
+    pub spread: Ratio,
     pub mix: Ratio,
 }
 
 impl Default for Phaser {
     fn default() -> Self {
-        Phaser {
-            cutoff: 500.0,
-            rate: 0.6,
-            depth: 0.5,
+        Self {
+            cutoff: Frequency::new::<hertz>(500.0),
+            rate: Frequency::new::<hertz>(0.6),
+            depth: Ratio::new::<percent>(50.0),
             order: 3,
-            spread: 0.5,
+            spread: Ratio::new::<percent>(50.0),
             mix: Ratio::new::<percent>(100.0),
         }
     }
@@ -75,17 +75,17 @@ impl EffectRead for Phaser {
 
         let enabled = reader.read_bool32()?;
         let order = reader.read_u32()?;
-        let cutoff = reader.read_f32()?;
-        let depth = reader.read_f32()?;
-        let rate = reader.read_f32()?;
-        let spread = reader.read_f32()?;
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
+        let cutoff = reader.read_hertz()?;
+        let depth = reader.read_ratio()?;
+        let rate = reader.read_hertz()?;
+        let spread = reader.read_ratio()?;
+        let mix = reader.read_ratio()?;
         let minimized = reader.read_bool32()?;
 
-        reader.expect_u32(0, "phaser_end1")?;
-        reader.expect_u32(0, "phaser_end2")?;
+        reader.expect_u32(0, "phaser_unknown_1")?;
+        reader.expect_u32(0, "phaser_unknown_2")?;
         if effect_version >= 1048 {
-            reader.expect_u32(0, "phaser_end3")?;
+            reader.expect_u32(0, "phaser_unknown_3")?;
         }
 
         Ok(EffectReadReturn::new(
@@ -112,11 +112,11 @@ impl EffectWrite for Phaser {
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
         writer.write_u32(self.order)?;
-        writer.write_f32(self.cutoff)?;
-        writer.write_f32(self.depth)?;
-        writer.write_f32(self.rate)?;
-        writer.write_f32(self.spread)?;
-        writer.write_f32(self.mix.get::<ratio>())?;
+        writer.write_hertz(self.cutoff)?;
+        writer.write_ratio(self.depth)?;
+        writer.write_hertz(self.rate)?;
+        writer.write_ratio(self.spread)?;
+        writer.write_ratio(self.mix)?;
         writer.write_bool32(minimized)?;
 
         writer.write_u32(0)?;
@@ -144,11 +144,11 @@ mod test {
     #[test]
     fn default() {
         let effect = Phaser::default();
-        assert_eq!(effect.cutoff, 500.0);
-        assert_eq!(effect.rate, 0.6);
-        assert_eq!(effect.depth, 0.5);
+        assert_eq!(effect.cutoff.get::<hertz>(), 500.0);
+        assert_eq!(effect.rate.get::<hertz>(), 0.6);
+        assert_eq!(effect.depth.get::<percent>(), 50.0);
         assert_eq!(effect.order, 3);
-        assert_eq!(effect.spread, 0.5);
+        assert_eq!(effect.spread.get::<percent>(), 50.0);
         assert_eq!(effect.mix.get::<percent>(), 100.0);
     }
 
@@ -168,11 +168,11 @@ mod test {
             assert!(snapin.enabled);
             assert!(!snapin.minimized);
             let effect = snapin.effect.as_phaser().unwrap();
-            assert_eq!(effect.cutoff, 500.0);
-            assert_eq!(effect.rate, 0.6);
-            assert_eq!(effect.depth, 0.5);
+            assert_eq!(effect.cutoff.get::<hertz>(), 500.0);
+            assert_eq!(effect.rate.get::<hertz>(), 0.6);
+            assert_eq!(effect.depth.get::<percent>(), 50.0);
             assert_eq!(effect.order, 3);
-            assert_eq!(effect.spread, 0.5);
+            assert_eq!(effect.spread.get::<percent>(), 50.0);
             assert_eq!(effect.mix.get::<percent>(), 100.0);
         }
     }
@@ -186,16 +186,16 @@ mod test {
         .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_phaser().unwrap();
-        assert_relative_eq!(effect.cutoff, 250.0, epsilon = 0.0001);
-        assert_eq!(effect.rate, 1.2);
-        assert_eq!(effect.depth, 0.25);
+        assert_relative_eq!(effect.cutoff.get::<hertz>(), 250.0, epsilon = 0.0001);
+        assert_eq!(effect.rate.get::<hertz>(), 1.2);
+        assert_eq!(effect.depth.get::<percent>(), 25.0);
 
         let preset =
             read_effect_preset("phaser", "phaser-order2-spread25-mix75-1.8.13.phaseplant").unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_phaser().unwrap();
         assert_eq!(effect.order, 2);
-        assert_eq!(effect.spread, 0.25);
+        assert_eq!(effect.spread.get::<percent>(), 25.0);
         assert_eq!(effect.mix.get::<percent>(), 75.0);
 
         let preset =
@@ -212,6 +212,6 @@ mod test {
         assert!(snapin.enabled);
         assert!(snapin.minimized);
         let effect = snapin.effect.as_phaser().unwrap();
-        assert_eq!(effect.rate, 6.0);
+        assert_eq!(effect.rate.get::<hertz>(), 6.0);
     }
 }

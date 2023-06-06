@@ -3,8 +3,7 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.5               | 1034           |
-//! | 1.8.14              | 1034           |
+//! | 1.8.5 to 1.8.14     | 1034           |
 //! | 2.0.16              | 1045           |
 
 use std::any::Any;
@@ -14,8 +13,8 @@ use std::io::{Error, ErrorKind, Read, Seek, Write};
 use uom::si::f32::Time;
 use uom::si::time::second;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TapeStop {
@@ -27,7 +26,7 @@ pub struct TapeStop {
 
 impl Default for TapeStop {
     fn default() -> Self {
-        TapeStop {
+        Self {
             running: true,
             stop_time: Time::new::<second>(0.2),
             start_time: Time::new::<second>(0.2),
@@ -68,8 +67,8 @@ impl EffectRead for TapeStop {
         }
 
         let running = reader.read_bool32()?;
-        let start_time = Time::new::<second>(reader.read_f32()?);
-        let stop_time = Time::new::<second>(reader.read_f32()?);
+        let start_time = reader.read_seconds()?;
+        let stop_time = reader.read_seconds()?;
         let enabled = reader.read_bool32()?;
         let curve = reader.read_f32()?;
         let minimized = reader.read_bool32()?;
@@ -101,8 +100,8 @@ impl EffectWrite for TapeStop {
         minimized: bool,
     ) -> io::Result<()> {
         writer.write_bool32(self.running)?;
-        writer.write_f32(self.start_time.get::<second>())?;
-        writer.write_f32(self.stop_time.get::<second>())?;
+        writer.write_seconds(self.start_time)?;
+        writer.write_seconds(self.stop_time)?;
         writer.write_bool32(enabled)?;
         writer.write_f32(self.curve)?;
         writer.write_bool32(minimized)?;

@@ -1,6 +1,6 @@
 use std::fs::File;
-use std::io::prelude::*;
 use std::io::{Cursor, Error, ErrorKind, Seek};
+use std::io::prelude::*;
 use std::mem::size_of;
 use std::path::Path;
 use std::str;
@@ -13,15 +13,15 @@ use uom::si::frequency::hertz;
 use uom::si::ratio::{percent, ratio};
 use uom::si::time::second;
 
+use crate::*;
 use crate::effect::*;
 use crate::generator::*;
 use crate::io::generators::GeneratorBlock;
-use crate::io::modulators::*;
 use crate::io::MetadataJson;
-use crate::modulation::{ModulationSource, ModulationTarget, MODULATIONS_MAX};
+use crate::io::modulators::*;
+use crate::modulation::{MODULATIONS_MAX, ModulationSource, ModulationTarget};
 use crate::modulator::*;
 use crate::text::TextOptionExt;
-use crate::*;
 
 /// Maximum length of a general purpose string. Helps to avoid corrupt files
 /// from consuming larges amounts of resources.
@@ -178,6 +178,25 @@ impl<T: Read + Seek> PhasePlantReader<T> {
         self.inner.read_f32::<LittleEndian>()
     }
 
+    pub(crate) fn read_decibels_db(&mut self) -> Result<Decibels, Error> {
+        self.read_f32().map(Decibels::new)
+    }
+
+    pub(crate) fn read_decibels_linear(&mut self) -> Result<Decibels, Error> {
+        self.read_f32().map(Decibels::from_linear)
+    }
+
+    pub(crate) fn read_hertz(&mut self) -> Result<Frequency, Error> {
+        self.read_f32().map(Frequency::new::<hertz>)
+    }
+
+    pub(crate) fn read_ratio(&mut self) -> Result<Ratio, Error> {
+        self.read_f32().map(Ratio::new::<ratio>)
+    }
+
+    pub(crate) fn read_seconds(&mut self) -> Result<Time, Error> {
+        self.read_f32().map(Time::new::<second>)
+    }
     /// Read the length of the string then the string. An error is created if
     /// the string exceeds [`READ_STRING_LENGTH_MAX`].
     pub(crate) fn read_string_and_length(&mut self) -> Result<Option<String>, Error> {
@@ -415,7 +434,7 @@ impl Preset {
             trace!("lane {}: pos {}", lane_index, reader.pos());
             let enabled = reader.read_bool32()?;
             let gain = reader.read_f32()?;
-            let mix = Ratio::new::<ratio>(reader.read_f32()?);
+            let mix = reader.read_ratio()?;
 
             let dest_id = reader.read_u32()?;
             trace!(
@@ -489,7 +508,7 @@ impl Preset {
             }
 
             // LFO
-            let depth = Ratio::new::<ratio>(reader.read_f32()?);
+            let depth = reader.read_ratio()?;
 
             // Retrigger was replaced by NoteTriggerMode in Phase Plant 2.
             let retrigger = reader.read_bool32()?;
@@ -502,7 +521,7 @@ impl Preset {
             let output_range = OutputRange::from_id(reader.read_u32()?)?;
 
             let rate = Rate {
-                frequency: Frequency::new::<hertz>(reader.read_f32()?),
+                frequency: reader.read_hertz()?,
                 numerator: reader.read_u32()?,
                 denominator: NoteValue::from_id(reader.read_u32()?)?,
                 sync: reader.read_bool32()?,
@@ -513,7 +532,7 @@ impl Preset {
                 trace!("modulator: envelope {envelope:?}");
             }
 
-            let phase_offset = Ratio::new::<ratio>(reader.read_f32()?);
+            let phase_offset = reader.read_ratio()?;
 
             // One shot was replaced by loop mode Phase Plant 2.
             let one_shot = reader.read_bool32()?;
@@ -564,7 +583,7 @@ impl Preset {
             reader.expect_u32(0, "early_version_extra_1")?;
         }
 
-        let mod_wheel_value = Ratio::new::<ratio>(reader.read_f32()?);
+        let mod_wheel_value = reader.read_ratio()?;
         let master_pitch = reader.read_f32()?;
         let polyphony = reader.read_u32()?;
         trace!("modulator: mod wheel value {mod_wheel_value:?}, master pitch {master_pitch}, polyphony {polyphony}");
@@ -600,19 +619,19 @@ impl Preset {
             let enabled = reader.read_bool32()?;
             let fine_tuning = reader.read_f32()?;
             let harmonic = reader.read_f32()?;
-            let shift = Frequency::new::<hertz>(reader.read_f32()?);
-            let level = reader.read_f32()?;
-            let phase_offset = Ratio::new::<ratio>(reader.read_f32()?);
-            let phase_jitter = Ratio::new::<ratio>(reader.read_f32()?);
+            let shift = reader.read_hertz()?;
+            let level = reader.read_ratio()?;
+            let phase_offset = reader.read_ratio()?;
+            let phase_jitter = reader.read_ratio()?;
             if !mode.is_blank() {
                 trace!("generator: unison start pos {}", reader.pos());
             }
             let unison = Unison {
                 // Other properties are later in the file
                 voices: reader.read_u32()?,
-                detune: reader.read_f32()?,
-                spread: reader.read_f32()?,
-                blend: reader.read_f32()?,
+                detune_cents: reader.read_f32()?,
+                spread: reader.read_ratio()?,
+                blend: reader.read_ratio()?,
                 ..Default::default()
             };
             if !mode.is_blank() {
@@ -624,48 +643,47 @@ impl Preset {
 
             // Sample player
             let base_pitch = reader.read_f32()?;
-            let offset_position = reader.read_f32()?;
+            let offset_position = reader.read_ratio()?;
             let sample_loop_mode = LoopMode::from_id(reader.read_u32()?)?;
-            let loop_start_position = reader.read_f32()?;
-            let loop_length = reader.read_f32()?;
-            let crossfade_amount = reader.read_f32()?;
+            let loop_start_position = reader.read_ratio()?;
+            let loop_length = reader.read_ratio()?;
+            let crossfade_amount = reader.read_ratio()?;
             if !mode.is_blank() {
                 trace!("generator: wavetable frame pos {}", reader.pos());
             }
             let wavetable_frame = reader.read_f32()?;
-            let band_limit = reader.read_f32()?;
+            let band_limit = reader.read_hertz()?;
 
             let analog_waveform = AnalogWaveform::from_id(reader.read_u32()?)?;
 
             let sync_multiplier = reader.read_f32()?;
-            let pulse_width = reader.read_f32()?;
+            let pulse_width = reader.read_ratio()?;
             let noise_waveform = NoiseWaveform::from_id(reader.read_u32()?)?;
-            let noise_slope = reader.read_f32()?;
-            let stereo = reader.read_f32()?;
+            let noise_slope = reader.read_decibels_db()?;
+            let stereo = reader.read_ratio()?;
 
             let seed_mode = SeedMode::from_id(reader.read_u32()?)?;
 
             let filter_mode = FilterMode::from_id(reader.read_u32()?)?;
             let filter_effect = Filter {
                 filter_mode,
-                cutoff: Frequency::new::<hertz>(reader.read_f32()?),
+                cutoff: reader.read_hertz()?,
                 q: reader.read_f32()?,
-                gain: Decibels::from_linear(reader.read_f32()?),
+                gain: reader.read_decibels_linear()?,
                 ..Default::default()
             };
 
             let mut distortion_effect = Distortion::new();
             distortion_effect.mode = DistortionMode::from_id(reader.read_u32()?)?;
-            distortion_effect.drive = Decibels::from_linear(reader.read_f32()?);
-            distortion_effect.bias = reader.read_f32()?;
-            distortion_effect.dynamics = 0.0; // Not in the Phase Plant interface
-            distortion_effect.spread = 0.0;
-            distortion_effect.mix = Ratio::new::<ratio>(reader.read_f32()?);
+            distortion_effect.drive = reader.read_decibels_linear()?;
+            distortion_effect.bias = reader.read_ratio()?;
+            distortion_effect.dynamics = Ratio::zero(); // Not in the Phase Plant interface
+            distortion_effect.mix = reader.read_ratio()?;
 
             let invert = reader.read_bool32()?;
-            let mix_level = reader.read_f32()?;
-            let output_gain = Decibels::from_linear(reader.read_f32()?);
-            let pan = Ratio::new::<ratio>(reader.read_f32()?);
+            let mix_level = reader.read_ratio()?;
+            let output_gain = reader.read_decibels_linear()?;
+            let pan = reader.read_ratio()?;
 
             let output_destination = OutputDestination::from_id(reader.read_u32()?)?;
             if !mode.is_blank() {
@@ -739,8 +757,8 @@ impl Preset {
             ));
         }
         let unison_detune = reader.read_f32()?;
-        let unison_spread = reader.read_f32()?;
-        let unison_blend = reader.read_f32()?;
+        let unison_spread = reader.read_ratio()?;
+        let unison_blend = reader.read_ratio()?;
 
         let master_gain = reader.read_f32()?;
 
@@ -818,10 +836,7 @@ impl Preset {
             }
         }
 
-        //
         // Filter slope
-        //
-
         if reader.is_release_at_least(PhasePlantRelease::V1_8_0) {
             trace!("generator: filter effect slopes pos {}", reader.pos());
             for block in &mut gen_blocks {
@@ -829,11 +844,12 @@ impl Preset {
             }
         }
 
-        // Unknown
-        // FIXME: GUESS AT VERSION
+        // Distortion effect spread
         if reader.is_release_at_least(PhasePlantRelease::V1_8_0) {
-            trace!("unknown blocks YY: pos {}", reader.pos());
-            reader.skip(128)?;
+            trace!("generator: distortion effect spread pos {}", reader.pos());
+            for block in &mut gen_blocks {
+                block.distortion_effect.spread = reader.read_ratio()?;
+            }
         }
 
         // Note modulator
@@ -871,10 +887,10 @@ impl Preset {
             let mode = UnisonMode::from_id(reader.read_u32()?)?;
 
             for block in &mut gen_blocks {
-                block.unison.bias = reader.read_f32()?;
+                block.unison.bias = reader.read_ratio()?;
             }
 
-            let bias = reader.read_f32()?;
+            let bias = reader.read_ratio()?;
 
             for block in &mut gen_blocks {
                 block.unison.enabled = reader.read_bool32()?;
@@ -886,7 +902,7 @@ impl Preset {
                 enabled,
                 voices: unison_voices,
                 mode,
-                detune: unison_detune,
+                detune_cents: unison_detune,
                 spread: unison_spread,
                 blend: unison_blend,
                 bias,
@@ -924,7 +940,7 @@ impl Preset {
             }
 
             for mod_block in &mut mod_blocks {
-                mod_block.gain = Decibels::from_linear(reader.read_f32()?);
+                mod_block.gain = reader.read_decibels_linear()?;
                 mod_block.group_id = reader.read_u32()?;
                 mod_block.trigger_threshold = reader.read_f32()?;
                 mod_block.note_trigger_mode = NoteTriggerMode::from_id(reader.read_u32()?)?;
@@ -934,7 +950,7 @@ impl Preset {
                 // Pitch Tracker
                 mod_block.pitch_tracker_lowest = reader.read_u32()?;
                 mod_block.pitch_tracker_highest = reader.read_u32()?;
-                mod_block.pitch_tracker_sensitivity = Ratio::new::<ratio>(reader.read_f32()?);
+                mod_block.pitch_tracker_sensitivity = reader.read_ratio()?;
                 mod_block.pitch_tracker_root = reader.read_u32()?;
 
                 let controller_slot_id = reader.read_u32()?;
@@ -968,26 +984,26 @@ impl Preset {
                 gen.curve_edited = reader.read_bool32()?;
                 let _curve_block_unknown_1 = reader.read_bool32()?;
                 reader.expect_f32(1.0, "block_g3_3")?;
-                gen.rate.frequency = Frequency::new::<hertz>(reader.read_f32()?);
+                gen.rate.frequency = reader.read_hertz()?;
                 gen.rate.numerator = reader.read_u32()?;
                 gen.rate.denominator = NoteValue::from_id(reader.read_u32()?)?;
                 gen.rate.sync = reader.read_bool32()?;
                 gen.curve_loop_mode = LoopMode::from_id(reader.read_u32()?)?;
-                gen.curve_loop_start = Ratio::new::<ratio>(reader.read_f32()?);
-                gen.curve_loop_length = Ratio::new::<ratio>(reader.read_f32()?);
+                gen.curve_loop_start = reader.read_ratio()?;
+                gen.curve_loop_length = reader.read_ratio()?;
                 gen.settings_locked = reader.read_bool32()?;
             }
 
             for mod_block in &mut mod_blocks {
-                mod_block.curve_time = Time::new::<second>(reader.read_f32()?);
+                mod_block.curve_time = reader.read_seconds()?;
 
                 // The reciprocal of the rate frequency for the LFO Table
                 // modulator.
-                let _lfo_table_time = Time::new::<second>(reader.read_f32()?);
+                let _lfo_table_time = reader.read_seconds()?;
             }
 
             for gen in &mut gen_blocks {
-                gen.curve_length = Time::new::<second>(reader.read_f32()?);
+                gen.curve_length = reader.read_seconds()?;
             }
 
             trace!("version 2.0: block J: pos {}", reader.pos());
@@ -1005,8 +1021,8 @@ impl Preset {
         // Slew limiter.
         if reader.is_release_at_least(PhasePlantRelease::V2_0_12) {
             for mod_block in &mut mod_blocks {
-                mod_block.slew_limiter_attack = Time::new::<second>(reader.read_f32()?);
-                mod_block.slew_limiter_decay = Time::new::<second>(reader.read_f32()?);
+                mod_block.slew_limiter_attack = reader.read_seconds()?;
+                mod_block.slew_limiter_decay = reader.read_seconds()?;
             }
         }
         if reader.is_release_at_least(PhasePlantRelease::V2_0_13) {
@@ -1020,30 +1036,30 @@ impl Preset {
             trace!("granular: pos {}", reader.pos());
             for gen in &mut gen_blocks {
                 let start_pos = reader.stream_position()?;
-                gen.granular_position = Ratio::new::<ratio>(reader.read_f32()?);
+                gen.granular_position = reader.read_ratio()?;
                 gen.granular_direction = GranularDirection::from_id(reader.read_u32()?)?;
                 gen.granular_grains = reader.read_f32()?;
 
                 // Randomization
-                gen.granular_randomization.position = Ratio::new::<ratio>(reader.read_f32()?);
-                gen.granular_randomization.timing = Ratio::new::<ratio>(reader.read_f32()?);
-                gen.granular_randomization.pitch = Frequency::new::<hertz>(reader.read_f32()?);
-                gen.granular_randomization.pan = Ratio::new::<ratio>(reader.read_f32()?);
-                gen.granular_randomization.level = Ratio::new::<ratio>(reader.read_f32()?);
-                gen.granular_randomization.reverse = Ratio::new::<ratio>(reader.read_f32()?);
+                gen.granular_randomization.position = reader.read_ratio()?;
+                gen.granular_randomization.timing = reader.read_ratio()?;
+                gen.granular_randomization.pitch = reader.read_hertz()?;
+                gen.granular_randomization.pan = reader.read_ratio()?;
+                gen.granular_randomization.level = reader.read_ratio()?;
+                gen.granular_randomization.reverse = reader.read_ratio()?;
 
                 gen.granular_align_phases = reader.read_bool32()?;
                 gen.granular_warm_start = reader.read_bool32()?;
                 gen.granular_auto_grain_length = reader.read_bool32()?;
 
                 gen.granular_envelope = GranularEnvelope {
-                    attack_time: Ratio::new::<ratio>(reader.read_f32()?),
+                    attack_time: reader.read_ratio()?,
                     attack_curve: reader.read_f32()?,
-                    decay_time: Ratio::new::<ratio>(reader.read_f32()?),
+                    decay_time: reader.read_ratio()?,
                     decay_curve: reader.read_f32()?,
                 };
 
-                gen.granular_grain_length = Time::new::<second>(reader.read_f32()?);
+                gen.granular_grain_length = reader.read_seconds()?;
                 gen.granular_chord.enabled = reader.read_bool32()?;
                 gen.granular_chord.range_octaves = reader.read_f32()?;
                 gen.granular_chord.mode = GranularChordMode::from_id(reader.read_u32()?)?;
@@ -1566,9 +1582,9 @@ mod test {
 
     use approx::assert_relative_eq;
 
+    use crate::*;
     use crate::test::read_preset;
     use crate::tests::test_data_path;
-    use crate::*;
 
     #[test]
     fn glide() {
@@ -1766,10 +1782,10 @@ mod test {
         assert!(unison.enabled);
         assert_eq!(unison.voices, 4);
         assert_eq!(unison.mode, UnisonMode::Smooth);
-        assert_eq!(unison.detune, 25.0); // cents
-        assert_eq!(unison.spread, 0.0); // 0%
-        assert_eq!(unison.blend, 1.0); // 100%
-        assert_eq!(unison.bias, 0.0); // 0%
+        assert_eq!(unison.detune_cents, 25.0); // cents
+        assert_eq!(unison.spread.get::<percent>(), 0.0); // 0%
+        assert_eq!(unison.blend.get::<percent>(), 100.0); // 100%
+        assert_eq!(unison.bias.get::<percent>(), 0.0); // 0%
     }
 
     #[test]
@@ -1779,10 +1795,10 @@ mod test {
         assert!(unison.enabled);
         assert_eq!(unison.voices, 4);
         assert_eq!(unison.mode, UnisonMode::Smooth);
-        assert_eq!(unison.detune, 25.0); // cents
-        assert_eq!(unison.spread, 0.0); // 0%
-        assert_eq!(unison.blend, 1.0); // 100%
-        assert_eq!(unison.bias, 0.0); // 0%
+        assert_eq!(unison.detune_cents, 25.0); // cents
+        assert_eq!(unison.spread.get::<percent>(), 0.0); // 0%
+        assert_eq!(unison.blend.get::<percent>(), 100.0); // 100%
+        assert_eq!(unison.bias.get::<percent>(), 0.0); // 0%
     }
 
     #[test]
@@ -1792,34 +1808,34 @@ mod test {
         assert!(unison.enabled);
         assert_eq!(unison.voices, 8);
         assert_eq!(unison.mode, UnisonMode::Hard);
-        assert_eq!(unison.detune, 99.0); // cents
-        assert_eq!(unison.spread, 0.0); // 0%
-        assert_eq!(unison.blend, 1.0); // 100%
-        assert_eq!(unison.bias, 0.0); // 0%
+        assert_eq!(unison.detune_cents, 99.0); // cents
+        assert_eq!(unison.spread.get::<percent>(), 0.0); // 0%
+        assert_eq!(unison.blend.get::<percent>(), 100.0); // 100%
+        assert_eq!(unison.bias.get::<percent>(), 0.0); // 0%
 
         let preset = read_preset("unison", "unison-bias--33%-1.8.13.phaseplant");
-        assert_relative_eq!(preset.unison.bias, -0.33);
+        assert_relative_eq!(preset.unison.bias.get::<percent>(), -33.0);
 
         let preset = read_preset("unison", "unison-blend-25%-1.8.13.phaseplant");
-        assert_relative_eq!(preset.unison.blend, 0.25);
+        assert_relative_eq!(preset.unison.blend.get::<percent>(), 25.0);
 
         let preset = read_preset("unison", "unison-blend-88%-1.8.13.phaseplant");
-        assert_relative_eq!(preset.unison.blend, 0.88);
+        assert_relative_eq!(preset.unison.blend.get::<percent>(), 88.0);
 
         let preset = read_preset("unison", "unison-detune-1.2ct-1.8.13.phaseplant");
-        assert_relative_eq!(preset.unison.detune, 1.2345678);
+        assert_relative_eq!(preset.unison.detune_cents, 1.2345678);
 
         let preset = read_preset("unison", "unison-detune-50ct-1.8.13.phaseplant");
-        assert_relative_eq!(preset.unison.detune, 50.0);
+        assert_relative_eq!(preset.unison.detune_cents, 50.0);
 
         let preset = read_preset("unison", "unison-spread-25%-1.8.13.phaseplant");
-        assert_relative_eq!(preset.unison.spread, 0.25);
+        assert_relative_eq!(preset.unison.spread.get::<percent>(), 25.0);
 
         let preset = read_preset("unison", "unison-spread-66%-1.8.13.phaseplant");
-        assert_relative_eq!(preset.unison.spread, 0.66);
+        assert_relative_eq!(preset.unison.spread.get::<percent>(), 66.0);
 
         let preset = read_preset("unison", "unison-spread-88%-1.8.13.phaseplant");
-        assert_relative_eq!(preset.unison.spread, 0.88);
+        assert_relative_eq!(preset.unison.spread.get::<percent>(), 88.0);
     }
 
     #[test]

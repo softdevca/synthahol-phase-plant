@@ -7,7 +7,7 @@
 //! | 2.0.0               | 1047           |
 //! | 2.0.16              | 1049           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -15,8 +15,8 @@ use uom::num::Zero;
 use uom::si::f32::Ratio;
 use uom::si::ratio::{percent, ratio};
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Stereo {
@@ -27,7 +27,7 @@ pub struct Stereo {
 
 impl Default for Stereo {
     fn default() -> Self {
-        Stereo {
+        Self {
             mid: Ratio::new::<percent>(100.0),
             width: Ratio::new::<percent>(100.0),
             pan: Ratio::zero(),
@@ -70,9 +70,9 @@ impl EffectRead for Stereo {
         }
 
         let enabled = reader.read_bool32()?;
-        let width = Ratio::new::<ratio>(reader.read_f32()?);
-        let pan = Ratio::new::<ratio>(reader.read_f32()?);
-        let mid = Ratio::new::<ratio>(reader.read_f32()?);
+        let width = reader.read_ratio()?;
+        let pan = reader.read_ratio()?;
+        let mid = reader.read_ratio()?;
         let minimized = reader.read_bool32()?;
 
         reader.expect_u32(0, "stereo_unknown_1")?;

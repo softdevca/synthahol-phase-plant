@@ -10,7 +10,7 @@
 //! | 2.0.12              | 1057           |
 //! | 2.1.0               | 1058           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -19,10 +19,10 @@ use strum_macros::EnumIter;
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
-use crate::MacroControl;
+use crate::{Decibels, MacroControl};
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Copy, Debug, EnumIter, Eq, PartialEq)]
 #[repr(u8)]
@@ -55,7 +55,7 @@ impl Display for ExternalInputMode {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Multipass {
-    pub gain: f32,
+    pub gain: Decibels,
     pub pan: Ratio,
     pub mix: Ratio,
     pub external_input_mode: ExternalInputMode,
@@ -67,8 +67,8 @@ pub struct Multipass {
 
 impl Default for Multipass {
     fn default() -> Self {
-        Multipass {
-            gain: 1.0,
+        Self {
+            gain: Decibels::ZERO,
             pan: Ratio::new::<percent>(50.0),
             mix: Ratio::new::<percent>(100.0),
             external_input_mode: ExternalInputMode::Off,
@@ -167,7 +167,7 @@ mod test {
     #[test]
     fn default() {
         let effect = Multipass::default();
-        assert_eq!(effect.gain, 1.0);
+        assert_eq!(effect.gain.db(), 0.0);
         assert_eq!(effect.mix.get::<percent>(), 100.0);
         assert_eq!(effect.external_input_mode, ExternalInputMode::Off);
         assert_eq!(effect.macro_controls[0].value, 0.0);
@@ -232,7 +232,7 @@ mod test {
         .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_multipass().unwrap();
-        assert_relative_eq!(effect.gain, 0.0);
+        assert_relative_eq!(effect.gain.db(), 0.0);
         assert_relative_eq!(effect.pan.get::<percent>(), 25.0);
         assert_relative_eq!(effect.mix.get::<percent>(), 25.0);
 
@@ -260,7 +260,7 @@ mod test {
         assert!(!snapin.enabled);
         assert!(!snapin.minimized);
         let effect = snapin.effect.as_multipass().unwrap();
-        assert_eq!(effect.gain, 5.0);
+        assert_eq!(effect.gain.db(), 10.0);
         assert_eq!(effect.mix.get::<percent>(), 50.0);
 
         let preset = read_effect_preset(

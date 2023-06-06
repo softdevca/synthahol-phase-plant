@@ -6,17 +6,17 @@
 //! | 2.0.12              | 1047           |
 //! | 2.0.16              | 1048           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use uom::si::f32::{Frequency, Ratio, Time};
 use uom::si::frequency::hertz;
-use uom::si::ratio::{percent, ratio};
-use uom::si::time::{millisecond, second};
+use uom::si::ratio::percent;
+use uom::si::time::millisecond;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Chorus {
@@ -36,7 +36,7 @@ impl Chorus {
 
 impl Default for Chorus {
     fn default() -> Self {
-        Chorus {
+        Self {
             taps: 2,
             mix: Ratio::new::<percent>(100.0),
             spread: Ratio::new::<percent>(100.0),
@@ -82,11 +82,11 @@ impl EffectRead for Chorus {
         }
 
         let enabled = reader.read_bool32()?;
-        let delay = Time::new::<second>(reader.read_f32()?);
-        let rate = Frequency::new::<hertz>(reader.read_f32()?);
-        let depth = Time::new::<second>(reader.read_f32()?);
-        let spread = Ratio::new::<ratio>(reader.read_f32()?);
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
+        let delay = reader.read_seconds()?;
+        let rate = reader.read_hertz()?;
+        let depth = reader.read_seconds()?;
+        let spread = reader.read_ratio()?;
+        let mix = reader.read_ratio()?;
         let taps = match reader.read_u32()? {
             0 => Ok(2),
             1 => Ok(3),
@@ -129,11 +129,11 @@ impl EffectWrite for Chorus {
         minimized: bool,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
-        writer.write_f32(self.delay.get::<second>())?;
-        writer.write_f32(self.rate.get::<hertz>())?;
-        writer.write_f32(self.depth.get::<second>())?;
-        writer.write_f32(self.spread.get::<ratio>())?;
-        writer.write_f32(self.mix.get::<ratio>())?;
+        writer.write_seconds(self.delay)?;
+        writer.write_hertz(self.rate)?;
+        writer.write_seconds(self.depth)?;
+        writer.write_ratio(self.spread)?;
+        writer.write_ratio(self.mix)?;
         writer.write_u32(self.taps as u32 - 2)?;
         writer.write_bool32(minimized)?;
 

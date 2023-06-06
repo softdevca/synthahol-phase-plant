@@ -41,13 +41,13 @@ pub struct NoiseGenerator {
     pub shift: Frequency,
     pub phase_offset: Ratio,
     pub phase_jitter: Ratio,
-    pub level: f32,
+    pub level: Ratio,
     pub waveform: NoiseWaveform,
 
     /// Decibels per octave
-    pub slope: f32,
+    pub slope: Decibels,
 
-    pub stereo: f32,
+    pub stereo: Ratio,
 
     pub seed_mode: SeedMode,
 }
@@ -155,14 +155,14 @@ mod test {
             assert!(generator.enabled);
             assert_eq!(generator.name(), "Noise".to_owned());
             assert_eq!(generator.waveform, NoiseWaveform::Colored);
-            assert_eq!(generator.level, 1.0);
+            assert_eq!(generator.level.get::<percent>(), 100.0);
             assert_eq!(generator.semi_cent, 0.0);
             assert_eq!(generator.harmonic, 4.0);
             assert_eq!(generator.shift, Frequency::zero());
             assert_eq!(generator.phase_offset, Ratio::zero());
             assert_eq!(generator.phase_jitter, Ratio::zero());
-            assert_relative_eq!(generator.slope, 3.0103, epsilon = 0.0001); // 3.0 db/Oct
-            assert_eq!(generator.stereo, 0.0);
+            assert_relative_eq!(generator.slope.db(), 3.0103, epsilon = 0.0001); // 3.0 db/Oct
+            assert_eq!(generator.stereo.get::<percent>(), 0.0);
             assert_eq!(generator.seed_mode, SeedMode::Stable);
         }
     }
@@ -176,7 +176,7 @@ mod test {
         .unwrap();
         let generator: &NoiseGenerator = preset.generator(1).unwrap();
         assert!(generator.enabled);
-        assert_relative_eq!(generator.stereo, 0.15);
+        assert_relative_eq!(generator.stereo.get::<percent>(), 15.0);
 
         let preset = read_generator_preset(
             "noise_generator",
@@ -185,8 +185,8 @@ mod test {
         .unwrap();
         let generator: &NoiseGenerator = preset.generator(1).unwrap();
         assert_eq!(generator.waveform, NoiseWaveform::KeytrackedStepped);
-        assert_relative_eq!(generator.slope, 2.0);
-        assert_relative_eq!(generator.stereo, 0.25);
+        assert_relative_eq!(generator.slope.db(), 2.0);
+        assert_relative_eq!(generator.stereo.get::<percent>(), 25.0);
         assert_eq!(generator.seed_mode, SeedMode::Random);
     }
 

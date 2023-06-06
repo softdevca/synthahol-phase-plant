@@ -3,9 +3,8 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.5               | 1003           |
-//! | 1.8.13              | 1003           |
-//! | 2.0.FIXME           | 1012           |
+//! | 1.8.5 to 1.8.13     | 1003           |
+//! | 2.0.?               | 1012           |
 //! | 2.0.12              | 1013           |
 //! | 2.0.16              | 1014           |
 
@@ -18,8 +17,8 @@ use strum_macros::FromRepr;
 use uom::si::f32::Ratio;
 use uom::si::ratio::{percent, ratio};
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Copy, Clone, Debug, FromRepr, Eq, PartialEq)]
 #[repr(u32)]
@@ -63,7 +62,7 @@ pub struct Ensemble {
 
 impl Default for Ensemble {
     fn default() -> Self {
-        Ensemble {
+        Self {
             voices: 6,
             detune: Ratio::new::<percent>(25.0),
             spread: Ratio::new::<percent>(50.0),
@@ -105,9 +104,9 @@ impl EffectRead for Ensemble {
         }
 
         let voices = reader.read_u32()?;
-        let detune = Ratio::new::<ratio>(reader.read_f32()?);
-        let spread = Ratio::new::<ratio>(reader.read_f32()?);
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
+        let detune = reader.read_ratio()?;
+        let spread = reader.read_ratio()?;
+        let mix = reader.read_ratio()?;
         let enabled = reader.read_bool32()?;
 
         let minimized = reader.read_bool32()?;
@@ -145,7 +144,7 @@ impl EffectWrite for Ensemble {
         writer.write_u32(self.voices)?;
         writer.write_f32(self.detune.get::<ratio>())?;
         writer.write_f32(self.spread.get::<ratio>())?;
-        writer.write_f32(self.mix.get::<ratio>())?;
+        writer.write_ratio(self.mix)?;
         writer.write_bool32(enabled)?;
         writer.write_bool32(minimized)?;
 

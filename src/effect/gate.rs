@@ -2,8 +2,7 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.13              | 1029           |
-//! | 1.8.20              | 1029           |
+//! | 1.8.13 to 1.8.20    | 1029           |
 //! | 2.0.16              | 1040           |
 
 use std::any::Any;
@@ -13,11 +12,11 @@ use std::io::{Error, ErrorKind, Read, Seek, Write};
 use uom::si::f32::Time;
 use uom::si::time::{millisecond, second};
 
-use crate::effect::SidechainMode;
 use crate::Decibels;
+use crate::effect::SidechainMode;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Gate {
@@ -98,11 +97,11 @@ impl EffectRead for Gate {
             ));
         }
 
-        let attack = Time::new::<second>(reader.read_f32()?);
-        let hold = Time::new::<second>(reader.read_f32()?);
-        let release = Time::new::<second>(reader.read_f32()?);
-        let threshold = Decibels::from_linear(reader.read_f32()?);
-        let tolerance = Decibels::from_linear(reader.read_f32()?);
+        let attack = reader.read_seconds()?;
+        let hold = reader.read_seconds()?;
+        let release = reader.read_seconds()?;
+        let threshold = reader.read_decibels_linear()?;
+        let tolerance = reader.read_decibels_linear()?;
         let range = reader.read_f32()?;
         let look_ahead = reader.read_bool32()?; //?
         let flip = reader.read_bool32()?;

@@ -9,10 +9,10 @@ use uom::si::f32::Frequency;
 use uom::si::frequency::hertz;
 use uom::si::ratio::ratio;
 
+use crate::*;
 use crate::generator::LoopMode;
 use crate::modulator::{Modulator, ModulatorMode, NoteTriggerMode, OutputRange};
 use crate::point::{CurvePoint, CurvePointMode};
-use crate::*;
 
 #[derive(Debug, PartialEq)]
 pub struct CurveModulator {
@@ -37,7 +37,7 @@ pub struct CurveModulator {
 
 impl Default for CurveModulator {
     fn default() -> Self {
-        let modulator = Self {
+        Self {
             output_range: OutputRange::Unipolar,
             loop_mode: LoopMode::Off,
             rate: Rate {
@@ -68,8 +68,7 @@ impl Default for CurveModulator {
                 },
             ],
             shape_edited: false,
-        };
-        modulator
+        }
     }
 }
 

@@ -8,7 +8,7 @@
 
 // The tone control was added in Phase Plant 2.0.9.
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -17,8 +17,8 @@ use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::{percent, ratio};
 use uom::si::time::second;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug)]
 pub struct Delay {
@@ -116,17 +116,17 @@ impl EffectRead for Delay {
         }
 
         let enabled = reader.read_bool32()?;
-        let time = Time::new::<second>(reader.read_f32()?);
+        let time = reader.read_seconds()?;
 
         let unknown2 = reader.read_u32()?;
         let unknown3 = reader.read_u32()?;
 
         let sync = reader.read_bool32()?;
-        let feedback = Ratio::new::<ratio>(reader.read_f32()?);
-        let pan = Ratio::new::<ratio>(reader.read_f32()?);
+        let feedback = reader.read_ratio()?;
+        let pan = reader.read_ratio()?;
         let bounce = reader.read_bool32()?;
-        let duck = Ratio::new::<ratio>(reader.read_f32()?);
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
+        let duck = reader.read_ratio()?;
+        let mix = reader.read_ratio()?;
         let minimized = reader.read_bool32()?;
 
         reader.expect_u32(0, "delay_unknown_5")?;
@@ -135,7 +135,7 @@ impl EffectRead for Delay {
         let mut tone = Ratio::zero();
         if effect_version >= 1049 {
             reader.expect_u32(0, "delay_unknown_7")?;
-            tone = Ratio::new::<ratio>(reader.read_f32()?);
+            tone = reader.read_ratio()?;
         }
 
         Ok(EffectReadReturn::new(
@@ -175,7 +175,7 @@ impl EffectWrite for Delay {
         writer.write_f32(self.pan.get::<ratio>())?;
         writer.write_bool32(self.bounce)?;
         writer.write_f32(self.duck.get::<ratio>())?;
-        writer.write_f32(self.mix.get::<ratio>())?;
+        writer.write_ratio(self.mix)?;
         writer.write_bool32(minimized)?;
 
         writer.write_u32(0)?;

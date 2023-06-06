@@ -7,16 +7,16 @@
 //! | 2.0.12              | 1048           |
 //! | 2.0.16              | 1049           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
-use uom::si::ratio::{percent, ratio};
+use uom::si::ratio::percent;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CombFilter {
@@ -31,7 +31,7 @@ pub struct CombFilter {
 
 impl Default for CombFilter {
     fn default() -> Self {
-        CombFilter {
+        Self {
             frequency: Frequency::new::<hertz>(440.0),
             polarity_minus: false,
             stereo: false,
@@ -75,8 +75,8 @@ impl EffectRead for CombFilter {
         }
 
         let enabled = reader.read_bool32()?;
-        let frequency = Frequency::new::<hertz>(reader.read_f32()?);
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
+        let frequency = reader.read_hertz()?;
+        let mix = reader.read_ratio()?;
         let polarity_minus = reader.read_bool32()?;
         let stereo = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
@@ -109,7 +109,7 @@ impl EffectWrite for CombFilter {
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
         writer.write_f32(self.frequency.get::<hertz>())?;
-        writer.write_f32(self.mix.get::<ratio>())?;
+        writer.write_ratio(self.mix)?;
         writer.write_bool32(self.polarity_minus)?;
         writer.write_bool32(self.stereo)?;
         writer.write_bool32(minimized)?;

@@ -10,7 +10,7 @@ pub struct MixRouting {
     pub id: GeneratorId,
     pub enabled: bool,
     pub name: String,
-    pub level: f32,
+    pub level: Ratio,
     pub invert: bool,
 }
 
@@ -89,7 +89,7 @@ mod test {
             let generator: &MixRouting = preset.generator(1).unwrap();
             assert!(generator.enabled);
             assert_eq!(generator.name(), "Mix".to_owned());
-            assert_relative_eq!(generator.level, 1.0);
+            assert_relative_eq!(generator.level.get::<percent>(), 100.0);
             assert!(!generator.invert);
         }
     }
@@ -112,6 +112,6 @@ mod test {
         let generator: &MixRouting = preset.generator(1).unwrap();
         assert!(generator.enabled);
         assert!(generator.invert);
-        assert_relative_eq!(generator.level, 0.8);
+        assert_relative_eq!(generator.level.get::<percent>(), 80.0);
     }
 }

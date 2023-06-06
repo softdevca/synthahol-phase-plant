@@ -125,7 +125,7 @@ pub enum ModulationSource {
 
 impl Default for ModulationSource {
     fn default() -> Self {
-        ModulationSource::Unknown {
+        Self::Unknown {
             category_id: Self::LOCAL_CATEGORY_ID,
             source_id: 0,
             reason: None,
@@ -477,8 +477,8 @@ mod test {
     use uom::si::f32::Ratio;
     use uom::si::ratio::{percent, ratio};
 
-    use crate::modulation::HostParameter::{LaneGain, LaneMix};
     use crate::modulation::{HostParameter, ModulationSource, ModulationTarget, RateMode};
+    use crate::modulation::HostParameter::{LaneGain, LaneMix};
     use crate::modulator::ModulatorId;
     use crate::test::read_preset;
 
@@ -514,9 +514,71 @@ mod test {
         }
     }
 
+    #[test]
+    fn source_from() {
+        use ModulationSource::*;
+        assert_eq!(ModulationSource::from(0x0000FFFF), MacroControl(0));
+        assert_eq!(ModulationSource::from(0x0002FFFF), MacroControl(2));
+        assert!(matches!(
+            ModulationSource::from(0x7234FFFF),
+            Unknown {
+                category_id: 0xFFFF,
+                source_id: 0x7234,
+                reason: _,
+            }
+        ));
+        assert_eq!(
+            ModulationSource::from(0x8234FFFF),
+            AudioRate {
+                module_id: 0x23,
+                parameter_id: 0x4,
+            },
+        );
+    }
+
+    /// Converting from a source ID and back again must result in the same ID.
+    #[test]
+    fn source_id() {
+        for id in 0..=0xFFFF {
+            let id_with_module = id << 16 | 0xFFFF;
+            assert_eq!(id_with_module, ModulationSource::from(id_with_module).id());
+        }
+    }
+
+    #[test]
+    fn target_from() {
+        use ModulationTarget::*;
+        assert!(matches!(
+            ModulationTarget::from(0xF234FFFF),
+            Host {
+                parameter: HostParameter::Unknown {
+                    target_id: 0x7234,
+                    reason: _
+                },
+                rate_mode: RateMode::Audio,
+            },
+        ));
+        assert_eq!(
+            ModulationTarget::from(0x019DFFFF),
+            Host {
+                parameter: LaneMix(0),
+                rate_mode: RateMode::Control,
+            }
+        );
+    }
+
+    /// Converting from a target ID and back again must result in the same ID.
+    #[test]
+    fn target_id() {
+        for id in 0..=0xFFFF {
+            let id_with_module = id << 16 | 0xFFFF;
+            assert_eq!(id_with_module, ModulationTarget::from(id_with_module).id());
+        }
+    }
+
     /// Macro 3 to unison detune, spread, blend, bias.
     #[test]
-    fn macros_version_2() {
+    fn unison_target() {
         let preset = read_preset(
             "modulation",
             "macro-3-detune-spread-blend-bias-2.0.16.phaseplant",
@@ -576,68 +638,6 @@ mod test {
                 rate_mode: RateMode::Control,
             }
         );
-    }
-
-    #[test]
-    fn target_from() {
-        use ModulationTarget::*;
-        assert!(matches!(
-            ModulationTarget::from(0xF234FFFF),
-            Host {
-                parameter: HostParameter::Unknown {
-                    target_id: 0x7234,
-                    reason: _
-                },
-                rate_mode: RateMode::Audio,
-            },
-        ));
-        assert_eq!(
-            ModulationTarget::from(0x019DFFFF),
-            Host {
-                parameter: LaneMix(0),
-                rate_mode: RateMode::Control,
-            }
-        );
-    }
-
-    /// Converting from a target ID and back again must result in the same ID.
-    #[test]
-    fn target_id() {
-        for id in 0..=0xFFFF {
-            let id_with_module = id << 16 | 0xFFFF;
-            assert_eq!(id_with_module, ModulationTarget::from(id_with_module).id());
-        }
-    }
-
-    #[test]
-    fn source_from() {
-        use ModulationSource::*;
-        assert_eq!(ModulationSource::from(0x0000FFFF), MacroControl(0));
-        assert_eq!(ModulationSource::from(0x0002FFFF), MacroControl(2));
-        assert!(matches!(
-            ModulationSource::from(0x7234FFFF),
-            Unknown {
-                category_id: 0xFFFF,
-                source_id: 0x7234,
-                reason: _,
-            }
-        ));
-        assert_eq!(
-            ModulationSource::from(0x8234FFFF),
-            AudioRate {
-                module_id: 0x23,
-                parameter_id: 0x4,
-            },
-        );
-    }
-
-    /// Converting from a source ID and back again must result in the same ID.
-    #[test]
-    fn source_id() {
-        for id in 0..=0xFFFF {
-            let id_with_module = id << 16 | 0xFFFF;
-            assert_eq!(id_with_module, ModulationSource::from(id_with_module).id());
-        }
     }
 }
 

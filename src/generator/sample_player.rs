@@ -25,21 +25,20 @@ pub struct SamplePlayer {
 
     pub phase_offset: Ratio,
     pub phase_jitter: Ratio,
-    pub level: f32,
+    pub level: Ratio,
     pub unison: Unison,
 
     /// Where the sample starts playing
+    pub offset_position: Ratio,
     pub offset_locked: bool,
-    pub offset_position: f32,
 
     /// Beginning of the loop area
-    pub loop_start_position: f32,
-
+    pub loop_start_position: Ratio,
     pub loop_locked: bool,
-    pub loop_length: f32,
+    pub loop_length: Ratio,
     pub loop_enabled: bool,
     pub loop_mode: LoopMode,
-    pub crossfade_amount: f32,
+    pub crossfade_amount: Ratio,
 
     /// A file containing the samples to play back. Usually in a format like FLAC, MP3 or WAV.
     pub sample_contents: Vec<u8>,
@@ -54,14 +53,13 @@ pub struct SamplePlayer {
 
 impl Default for SamplePlayer {
     fn default() -> Self {
-        let player = Self::from(&GeneratorBlock {
+        Self::from(&GeneratorBlock {
             name: GeneratorMode::SamplePlayer.name().to_owned(),
-            loop_start_position: 0.5,
-            loop_length: 0.25,
-            crossfade_amount: 0.01,
+            loop_start_position: Ratio::new::<percent>(50.0),
+            loop_length: Ratio::new::<percent>(25.0),
+            crossfade_amount: Ratio::new::<percent>(1.0),
             ..Default::default()
-        });
-        player
+        })
     }
 }
 
@@ -146,14 +144,14 @@ mod test {
 
     use super::*;
 
-    // FIXME: Add version 2 tests
+// FIXME: Add version 2 tests
 
     // FIXME: Add fn default() to check that init matches the default
 
     fn assert_default(format_version: &Version<u32>, generator: &SamplePlayer) {
         assert!(generator.enabled);
         assert_eq!(generator.name(), "Sampler".to_owned());
-        assert_eq!(generator.level, 1.0);
+        assert_eq!(generator.level.get::<percent>(), 100.0);
         assert!(!generator.base_pitch_locked);
         assert_eq!(generator.harmonic, 1.0);
         assert_eq!(generator.shift, Frequency::zero());
@@ -168,10 +166,10 @@ mod test {
         assert!(!generator.loop_enabled);
         assert!(!generator.loop_locked);
         assert!(!generator.offset_locked);
-        assert_eq!(generator.offset_position, 0.0);
-        assert_eq!(generator.loop_start_position, 0.5);
-        assert_eq!(generator.loop_length, 0.25);
-        assert_eq!(generator.crossfade_amount, 0.01);
+        assert_eq!(generator.offset_position.get::<percent>(), 0.0);
+        assert_eq!(generator.loop_start_position.get::<percent>(), 50.0);
+        assert_eq!(generator.loop_length.get::<percent>(), 25.0);
+        assert_eq!(generator.crossfade_amount.get::<percent>(), 1.0);
 
         // In Phase Plant 1.8.5 the default loop mode changed from `Off` to `Infinite`.
         if format_version.is_at_least(&PhasePlantRelease::V1_8_5.format_version()) {
@@ -251,7 +249,7 @@ mod test {
             read_generator_preset("sample_player", "sample_player-2tambos-1.8.18.phaseplant")
                 .unwrap();
         let generator1: &SamplePlayer = preset.generator(3).unwrap();
-        assert_eq!(generator1.level, 1.0);
+        assert_eq!(generator1.level.get::<percent>(), 100.0);
         assert_eq!(generator1.sample_name, Some("Tambourine Hit 1".to_owned()));
         assert_eq!(
             generator1.sample_path,
@@ -269,7 +267,7 @@ mod test {
             read_generator_preset("sample_player", "sample_player-3rhodes-1.8.13.phaseplant")
                 .unwrap();
         let generator1: &SamplePlayer = preset.generator(1).unwrap();
-        assert_eq!(generator1.level, 1.0);
+        assert_eq!(generator1.level.get::<percent>(), 100.0);
         assert_eq!(generator1.sample_name, Some("Roads A (C2)".to_owned()));
         assert_eq!(
             generator1.sample_path,
@@ -301,10 +299,22 @@ mod test {
         .unwrap();
         let generator: &SamplePlayer = preset.generator(1).unwrap();
         assert!(generator.loop_enabled);
-        assert_relative_eq!(generator.offset_position, 0.0574, epsilon = 0.0001);
-        assert_relative_eq!(generator.loop_start_position, 0.3272, epsilon = 0.0001);
-        assert_relative_eq!(generator.loop_length, 0.663, epsilon = 0.0001);
-        assert_relative_eq!(generator.crossfade_amount, 0.0305, epsilon = 0.001);
+        assert_relative_eq!(
+            generator.offset_position.get::<percent>(),
+            5.74,
+            epsilon = 0.01
+        );
+        assert_relative_eq!(
+            generator.loop_start_position.get::<percent>(),
+            32.72,
+            epsilon = 0.001
+        );
+        assert_relative_eq!(generator.loop_length.get::<percent>(), 66.3, epsilon = 0.01);
+        assert_relative_eq!(
+            generator.crossfade_amount.get::<percent>(),
+            3.05,
+            epsilon = 0.001
+        );
         assert_eq!(generator.loop_mode, LoopMode::Infinite);
         assert_eq!(generator.sample_name, Some("Alto Choir".to_owned()));
         assert_eq!(
@@ -334,10 +344,22 @@ mod test {
         )
         .unwrap();
         let generator: &SamplePlayer = preset.generator(1).unwrap();
-        assert_relative_eq!(generator.offset_position, 0.0574, epsilon = 0.0001);
-        assert_relative_eq!(generator.loop_start_position, 0.3272, epsilon = 0.0001);
-        assert_relative_eq!(generator.loop_length, 0.663, epsilon = 0.0001);
-        assert_relative_eq!(generator.crossfade_amount, 0.5, epsilon = 0.001);
+        assert_relative_eq!(
+            generator.offset_position.get::<percent>(),
+            5.74,
+            epsilon = 0.01
+        );
+        assert_relative_eq!(
+            generator.loop_start_position.get::<percent>(),
+            32.72,
+            epsilon = 0.001
+        );
+        assert_relative_eq!(generator.loop_length.get::<percent>(), 66.3, epsilon = 0.01);
+        assert_relative_eq!(
+            generator.crossfade_amount.get::<percent>(),
+            50.0,
+            epsilon = 0.001
+        );
         assert_eq!(generator.loop_mode, LoopMode::PingPong);
 
         let preset = read_generator_preset(
@@ -346,10 +368,22 @@ mod test {
         )
         .unwrap();
         let generator: &SamplePlayer = preset.generator(1).unwrap();
-        assert_relative_eq!(generator.offset_position, 0.0574, epsilon = 0.0001);
-        assert_relative_eq!(generator.loop_start_position, 0.3272, epsilon = 0.0001);
-        assert_relative_eq!(generator.loop_length, 0.5, epsilon = 0.0001);
-        assert_relative_eq!(generator.crossfade_amount, 0.0305, epsilon = 0.001);
+        assert_relative_eq!(
+            generator.offset_position.get::<percent>(),
+            5.74,
+            epsilon = 0.01
+        );
+        assert_relative_eq!(
+            generator.loop_start_position.get::<percent>(),
+            32.72,
+            epsilon = 0.001
+        );
+        assert_relative_eq!(generator.loop_length.get::<percent>(), 50.0, epsilon = 0.01);
+        assert_relative_eq!(
+            generator.crossfade_amount.get::<percent>(),
+            3.05,
+            epsilon = 0.001
+        );
         assert_eq!(generator.loop_mode, LoopMode::Reverse);
 
         let preset = read_generator_preset(
@@ -358,10 +392,26 @@ mod test {
         )
         .unwrap();
         let generator: &SamplePlayer = preset.generator(1).unwrap();
-        assert_relative_eq!(generator.offset_position, 0.0574, epsilon = 0.0001);
-        assert_relative_eq!(generator.loop_start_position, 0.5, epsilon = 0.0001);
-        assert_relative_eq!(generator.loop_length, 0.4382, epsilon = 0.0001);
-        assert_relative_eq!(generator.crossfade_amount, 0.0305, epsilon = 0.001);
+        assert_relative_eq!(
+            generator.offset_position.get::<percent>(),
+            5.74,
+            epsilon = 0.01
+        );
+        assert_relative_eq!(
+            generator.loop_start_position.get::<percent>(),
+            50.0,
+            epsilon = 0.001
+        );
+        assert_relative_eq!(
+            generator.loop_length.get::<percent>(),
+            43.82,
+            epsilon = 0.01
+        );
+        assert_relative_eq!(
+            generator.crossfade_amount.get::<percent>(),
+            3.05,
+            epsilon = 0.001
+        );
         assert_eq!(generator.loop_mode, LoopMode::Sustain);
     }
 
@@ -418,7 +468,7 @@ mod test {
         .unwrap();
         let generator: &SamplePlayer = preset.generator(1).unwrap();
         assert!(!generator.loop_enabled);
-        assert_eq!(generator.offset_position, 0.33);
+        assert_eq!(generator.offset_position.get::<percent>(), 33.0);
         assert_eq!(generator.base_pitch, midi!(A, 4).into_byte() as f32);
     }
 
@@ -432,9 +482,9 @@ mod test {
         assert!(unison.enabled);
         assert_eq!(unison.voices, 7);
         assert_eq!(unison.mode, UnisonMode::MinorMaj7);
-        assert_relative_eq!(unison.detune, 30.0);
-        assert_relative_eq!(unison.spread, 0.15);
-        assert_relative_eq!(unison.blend, 0.4);
-        assert_relative_eq!(unison.bias, 0.15);
+        assert_relative_eq!(unison.detune_cents, 30.0);
+        assert_relative_eq!(unison.spread.get::<percent>(), 15.0, epsilon = 0.001);
+        assert_relative_eq!(unison.blend.get::<percent>(), 40.0, epsilon = 0.001);
+        assert_relative_eq!(unison.bias.get::<percent>(), 15.0, epsilon = 0.001);
     }
 }

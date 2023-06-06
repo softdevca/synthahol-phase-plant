@@ -1,6 +1,9 @@
 use std::io::{Error, ErrorKind};
 
 use strum_macros::FromRepr;
+use uom::num::Zero;
+use uom::si::f32::Ratio;
+use uom::si::ratio::percent;
 
 #[derive(Copy, Clone, Debug, FromRepr, Eq, PartialEq)]
 #[repr(u32)]
@@ -47,13 +50,13 @@ pub struct Unison {
 
     /// In cents. The Phase Plant interface only shows on decimal digit even though it
     /// stores more.
-    pub detune: f32,
+    pub detune_cents: f32,
 
-    pub spread: f32,
-    pub blend: f32,
+    pub spread: Ratio,
+    pub blend: Ratio,
 
     /// Also known as "balance"
-    pub bias: f32,
+    pub bias: Ratio,
 }
 
 impl Unison {
@@ -62,14 +65,14 @@ impl Unison {
 
 impl Default for Unison {
     fn default() -> Self {
-        Unison {
+        Self {
             enabled: false,
             voices: 4,
             mode: UnisonMode::Smooth,
-            detune: 25.0,
-            spread: 0.0,
-            blend: 1.0,
-            bias: 0.0,
+            detune_cents: 25.0,
+            spread: Ratio::zero(),
+            blend: Ratio::new::<percent>(100.0),
+            bias: Ratio::zero(),
         }
     }
 }

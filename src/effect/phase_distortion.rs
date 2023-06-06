@@ -3,23 +3,22 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.5               | 1023           |
-//! | 1.8.16              | 1023           |
+//! | 1.8.5 to 1.8.1.6    | 1023           |
 //! | 2.0.16              | 1034           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use uom::num::Zero;
 use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
-use uom::si::ratio::{percent, ratio};
+use uom::si::ratio::percent;
 
 use crate::effect::SidechainMode;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PhaseDistortion {
@@ -74,9 +73,9 @@ impl EffectRead for PhaseDistortion {
 
         let drive = reader.read_f32()?;
         let spread = Ratio::new::<percent>(reader.read_f32()?);
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
+        let mix = reader.read_ratio()?;
         let normalize = reader.read_f32()?;
-        let tone = Frequency::new::<hertz>(reader.read_f32()?);
+        let tone = reader.read_hertz()?;
         let bias = Ratio::new::<percent>(reader.read_f32()?);
         let enabled = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
@@ -122,7 +121,7 @@ impl EffectWrite for PhaseDistortion {
     ) -> io::Result<()> {
         writer.write_f32(self.drive)?;
         writer.write_f32(self.spread.get::<percent>())?;
-        writer.write_f32(self.mix.get::<ratio>())?;
+        writer.write_ratio(self.mix)?;
         writer.write_f32(self.normalize)?;
         writer.write_f32(self.tone.get::<hertz>())?;
         writer.write_f32(self.bias.get::<percent>())?;
@@ -146,7 +145,7 @@ impl EffectWrite for PhaseDistortion {
 
 impl Default for PhaseDistortion {
     fn default() -> Self {
-        let distortion = PhaseDistortion {
+        Self {
             drive: 0.5,
             normalize: 0.5,
             tone: Frequency::new::<hertz>(640.0),
@@ -154,8 +153,7 @@ impl Default for PhaseDistortion {
             spread: Ratio::zero(),
             mix: Ratio::new::<percent>(100.0),
             sidechain_mode: SidechainMode::Off,
-        };
-        distortion
+        }
     }
 }
 

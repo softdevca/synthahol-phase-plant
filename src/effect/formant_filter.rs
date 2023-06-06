@@ -8,31 +8,34 @@
 //! | 2.0.12              | 1047           |
 //! | 2.1.0               | 1048           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
-use super::super::io::*;
+use uom::si::f32::Frequency;
+use uom::si::frequency::hertz;
+
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FormantFilter {
     pub q: f32,
     pub lows: bool,
     pub highs: bool,
-    pub x: f32,
-    pub y: f32,
+    pub x: Frequency,
+    pub y: Frequency,
     unknown_3: u32,
 }
 
 impl Default for FormantFilter {
     fn default() -> Self {
-        FormantFilter {
+        Self {
             q: 4.0,
             lows: true,
             highs: true,
-            x: 550.0,
-            y: 1500.0,
+            x: Frequency::new::<hertz>(550.0),
+            y: Frequency::new::<hertz>(1500.0),
             unknown_3: 0,
         }
     }
@@ -73,8 +76,8 @@ impl EffectRead for FormantFilter {
         }
 
         let enabled = reader.read_bool32()?;
-        let x = reader.read_f32()?;
-        let y = reader.read_f32()?;
+        let x = reader.read_hertz()?;
+        let y = reader.read_hertz()?;
         let q = reader.read_f32()?;
         let lows = reader.read_bool32()?;
         let highs = reader.read_bool32()?;
@@ -111,8 +114,8 @@ impl EffectWrite for FormantFilter {
         minimized: bool,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
-        writer.write_f32(self.x)?;
-        writer.write_f32(self.y)?;
+        writer.write_hertz(self.x)?;
+        writer.write_hertz(self.y)?;
         writer.write_f32(self.q)?;
         writer.write_bool32(self.lows)?;
         writer.write_bool32(self.highs)?;
@@ -143,8 +146,8 @@ mod test {
         assert_eq!(effect.q, 4.0);
         assert!(effect.lows);
         assert!(effect.highs);
-        assert_eq!(effect.x, 550.0);
-        assert_eq!(effect.y, 1500.0);
+        assert_eq!(effect.x.get::<hertz>(), 550.0);
+        assert_eq!(effect.y.get::<hertz>(), 1500.0);
     }
 
     #[test]
@@ -180,8 +183,8 @@ mod test {
         .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_formant_filter().unwrap();
-        assert_eq!(effect.x, 500.0);
-        assert_eq!(effect.y, 1000.0);
+        assert_eq!(effect.x.get::<hertz>(), 500.0);
+        assert_eq!(effect.y.get::<hertz>(), 1000.0);
 
         let preset = read_effect_preset(
             "formant_filter",
@@ -218,8 +221,8 @@ mod test {
         assert!(snapin.enabled);
         assert!(snapin.minimized);
         let effect = snapin.effect.as_formant_filter().unwrap();
-        assert_eq!(effect.x, 200.0);
-        assert_eq!(effect.y, 2500.0);
+        assert_eq!(effect.x.get::<hertz>(), 200.0);
+        assert_eq!(effect.y.get::<hertz>(), 2500.0);
         assert_eq!(effect.q, 10.0);
     }
 }

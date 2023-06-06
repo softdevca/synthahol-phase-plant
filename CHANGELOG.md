@@ -2,6 +2,10 @@
 
 Unreleased changes.
 
+# 0.2.0 (2023-06-05)
+
+* Use units of measure in many more places for improved type safety.
+
 # 0.1.1 (2023-06-02)
 
 * Recognize more forms of modulation.

@@ -2,7 +2,7 @@
 
 [package]
 name = "synthahol-phase-plant"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 authors = ["Sheldon Young <sheldon@softdev.ca>"]
 description = "Read and write Phase Plant presets"

@@ -2,28 +2,30 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.5               | 1037           |
-//! | 1.8.14              | 1037           |
+//! | 1.8.5 to 1.8.14     | 1037           |
 //! | 2.0.16              | 1048           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
-use super::super::io::*;
+use uom::si::f32::Time;
+use uom::si::time::millisecond;
+
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Haas {
     pub right: bool,
-    pub delay: f32,
+    pub delay: Time,
 }
 
 impl Default for Haas {
     fn default() -> Self {
         Haas {
             right: true,
-            delay: 0.005,
+            delay: Time::new::<millisecond>(5.0),
         }
     }
 }
@@ -64,7 +66,7 @@ impl EffectRead for Haas {
 
         let enabled = reader.read_bool32()?;
         let right = reader.read_bool32()?;
-        let delay = reader.read_f32()?;
+        let delay = reader.read_seconds()?;
         let minimized = reader.read_bool32()?;
 
         reader.expect_u32(0, "haas_unknown3")?;
@@ -90,7 +92,7 @@ impl EffectWrite for Haas {
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
         writer.write_bool32(self.right)?;
-        writer.write_f32(self.delay)?;
+        writer.write_seconds(self.delay)?;
         writer.write_bool32(minimized)?;
 
         writer.write_u32(0)?;
@@ -108,6 +110,8 @@ impl EffectWrite for Haas {
 
 #[cfg(test)]
 mod test {
+    use approx::assert_relative_eq;
+
     use crate::effect::Filter;
     use crate::test::read_effect_preset;
 
@@ -117,7 +121,7 @@ mod test {
     fn default() {
         let effect = Haas::default();
         assert!(effect.right);
-        assert_eq!(effect.delay, 0.005);
+        assert_eq!(effect.delay.get::<millisecond>(), 5.0);
     }
 
     #[test]
@@ -141,7 +145,7 @@ mod test {
             assert!(!snapin.minimized);
             let effect = snapin.effect.as_haas().unwrap();
             assert!(effect.right);
-            assert_eq!(effect.delay, 0.005);
+            assert_relative_eq!(effect.delay.get::<millisecond>(), 5.0, epsilon = 0.01);
         }
     }
 
@@ -154,7 +158,7 @@ mod test {
         assert!(snapin.minimized);
         let effect = snapin.effect.as_haas().unwrap();
         assert!(!effect.right);
-        assert_eq!(effect.delay, 0.0025);
+        assert_relative_eq!(effect.delay.get::<millisecond>(), 2.5, epsilon = 0.01);
 
         let preset = read_effect_preset("haas", "haas-small_width-1.8.13.phaseplant").unwrap();
         let snapin = &preset.lanes[0].snapins[0];

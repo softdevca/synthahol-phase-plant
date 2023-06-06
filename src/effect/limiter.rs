@@ -10,26 +10,29 @@ use std::any::Any;
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use uom::si::f32::Time;
+use uom::si::time::second;
+
 use crate::Decibels;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Limiter {
-    pub threshold: f32,
-    pub release: f32,
-    pub in_gain: f32,
-    pub out_gain: f32,
+    pub threshold: Decibels,
+    pub release: Time,
+    pub in_gain: Decibels,
+    pub out_gain: Decibels,
 }
 
 impl Default for Limiter {
     fn default() -> Self {
         Self {
-            threshold: Decibels::ZERO.linear(),
-            release: 0.023,
-            in_gain: Decibels::ZERO.linear(),
-            out_gain: Decibels::ZERO.linear(),
+            threshold: Decibels::ZERO,
+            release: Time::new::<second>(0.023),
+            in_gain: Decibels::ZERO,
+            out_gain: Decibels::ZERO,
         }
     }
 }
@@ -66,10 +69,10 @@ impl EffectRead for Limiter {
         }
 
         let enabled = reader.read_bool32()?;
-        let in_gain = reader.read_f32()?;
-        let out_gain = reader.read_f32()?;
-        let threshold = reader.read_f32()?;
-        let release = reader.read_f32()?;
+        let in_gain = reader.read_decibels_linear()?;
+        let out_gain = reader.read_decibels_linear()?;
+        let threshold = reader.read_decibels_linear()?;
+        let release = reader.read_seconds()?;
         let minimized = reader.read_bool32()?;
 
         reader.expect_u32(0, "limiter_unknown_1")?;
@@ -99,10 +102,10 @@ impl EffectWrite for Limiter {
         minimized: bool,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
-        writer.write_f32(self.in_gain)?;
-        writer.write_f32(self.out_gain)?;
-        writer.write_f32(self.threshold)?;
-        writer.write_f32(self.release)?;
+        writer.write_decibels_linear(self.in_gain)?;
+        writer.write_decibels_linear(self.out_gain)?;
+        writer.write_decibels_linear(self.threshold)?;
+        writer.write_seconds(self.release)?;
         writer.write_bool32(minimized)?;
 
         writer.write_u32(0)?;
@@ -122,19 +125,19 @@ impl EffectWrite for Limiter {
 mod test {
     use approx::assert_relative_eq;
 
+    use crate::Decibels;
     use crate::effect::Filter;
     use crate::test::read_effect_preset;
-    use crate::Decibels;
 
     use super::*;
 
     #[test]
     fn default() {
         let effect = Limiter::default();
-        assert_eq!(effect.in_gain, Decibels::ZERO.linear());
-        assert_eq!(effect.out_gain, Decibels::ZERO.linear());
-        assert_eq!(effect.threshold, Decibels::ZERO.linear());
-        assert_eq!(effect.release, 0.023);
+        assert_eq!(effect.in_gain, Decibels::ZERO);
+        assert_eq!(effect.out_gain, Decibels::ZERO);
+        assert_eq!(effect.threshold, Decibels::ZERO);
+        assert_eq!(effect.release.get::<second>(), 0.023);
     }
 
     #[test]
@@ -154,10 +157,10 @@ mod test {
             assert!(!snapin.minimized);
             assert_eq!(snapin.position, 1);
             let effect = snapin.effect.as_limiter().unwrap();
-            assert_eq!(effect.in_gain, Decibels::ZERO.linear());
-            assert_eq!(effect.out_gain, Decibels::ZERO.linear());
-            assert_eq!(effect.threshold, Decibels::ZERO.linear());
-            assert_eq!(effect.release, 0.023);
+            assert_eq!(effect.in_gain, Decibels::ZERO);
+            assert_eq!(effect.out_gain, Decibels::ZERO);
+            assert_eq!(effect.threshold, Decibels::ZERO);
+            assert_eq!(effect.release.get::<second>(), 0.023);
         }
     }
 
@@ -166,28 +169,16 @@ mod test {
         let preset = read_effect_preset("limiter", "limiter-in-5-out4-1.8.13.phaseplant").unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_limiter().unwrap();
-        assert_relative_eq!(
-            effect.in_gain,
-            Decibels::new(-5.0).linear(),
-            epsilon = 0.0001
-        );
-        assert_relative_eq!(
-            effect.out_gain,
-            Decibels::new(4.0).linear(),
-            epsilon = 0.0001
-        );
+        assert_relative_eq!(effect.in_gain.db(), -5.0, epsilon = 0.0001);
+        assert_relative_eq!(effect.out_gain.db(), 4.0, epsilon = 0.0001);
 
         let preset =
             read_effect_preset("limiter", "limiter-threshold3-release10-1.8.13.phaseplant")
                 .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_limiter().unwrap();
-        assert_eq!(effect.release, 0.010);
-        assert_relative_eq!(
-            effect.threshold,
-            Decibels::new(3.0).linear(),
-            epsilon = 0.0001
-        );
+        assert_eq!(effect.release.get::<second>(), 0.010);
+        assert_relative_eq!(effect.threshold.db(), 3.0, epsilon = 0.0001);
 
         let preset =
             read_effect_preset("limiter", "limiter-out10-disabled-1.8.14.phaseplant").unwrap();
@@ -195,7 +186,7 @@ mod test {
         assert!(!snapin.enabled);
         assert!(!snapin.minimized);
         let effect = snapin.effect.as_limiter().unwrap();
-        assert_eq!(effect.out_gain, Decibels::new(10.0).linear());
+        assert_eq!(effect.out_gain.db(), 10.0);
 
         let preset =
             read_effect_preset("limiter", "limiter-in10-minimized-1.8.14.phaseplant").unwrap();
@@ -203,6 +194,6 @@ mod test {
         assert!(snapin.enabled);
         assert!(snapin.minimized);
         let effect = snapin.effect.as_limiter().unwrap();
-        assert_eq!(effect.in_gain, Decibels::new(10.0).linear());
+        assert_eq!(effect.in_gain.db(), 10.0);
     }
 }

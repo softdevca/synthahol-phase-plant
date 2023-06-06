@@ -3,12 +3,11 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.5               | 1015           |
-//! | 1.8.15              | 1015           |
+//! | 1.8.5 to 1.8.15     | 1015           |
 //! | 2.0.12              | 1025           |
 //! | 2.0.16              | 1026           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -17,8 +16,8 @@ use uom::si::frequency::hertz;
 
 use crate::Decibels;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ThreeBandEq {
@@ -35,7 +34,7 @@ pub struct ThreeBandEq {
 
 impl Default for ThreeBandEq {
     fn default() -> Self {
-        ThreeBandEq {
+        Self {
             low_freq: Frequency::new::<hertz>(220.0),
             high_freq: Frequency::new::<hertz>(2200.0),
             low_gain: Decibels::ZERO,
@@ -79,11 +78,11 @@ impl EffectRead for ThreeBandEq {
             ));
         }
 
-        let low_gain = Decibels::new(reader.read_f32()?);
-        let mid_gain = Decibels::new(reader.read_f32()?);
-        let high_gain = Decibels::new(reader.read_f32()?);
-        let low_freq = Frequency::new::<hertz>(reader.read_f32()?);
-        let high_freq = Frequency::new::<hertz>(reader.read_f32()?);
+        let low_gain = reader.read_decibels_db()?;
+        let mid_gain = reader.read_decibels_db()?;
+        let high_gain = reader.read_decibels_db()?;
+        let low_freq = reader.read_hertz()?;
+        let high_freq = reader.read_hertz()?;
         let enabled = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
 
@@ -142,9 +141,9 @@ mod test {
     use uom::si::f32::Frequency;
     use uom::si::frequency::hertz;
 
+    use crate::Decibels;
     use crate::effect::Filter;
     use crate::test::read_effect_preset;
-    use crate::Decibels;
 
     use super::*;
 

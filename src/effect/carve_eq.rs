@@ -10,7 +10,7 @@
 
 // Phase Plant 1.8.14 added saving the zoom and pan settings of the view.
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -20,13 +20,13 @@ use strum_macros::FromRepr;
 use uom::num::Zero;
 use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
-use uom::si::ratio::{percent, ratio};
+use uom::si::ratio::percent;
 
-use crate::version::Version;
 use crate::Decibels;
+use crate::version::Version;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 pub type CarveEqShape = [[f32; CarveEq::BAND_COUNT]; CarveEq::CHANNEL_COUNT];
 
@@ -287,7 +287,7 @@ impl EffectRead for CarveEq {
 
         reader.expect_u8(0, "carve_eq_path_1")?;
 
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
+        let mix = reader.read_ratio()?;
         let enabled = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
 
@@ -311,7 +311,7 @@ impl EffectRead for CarveEq {
         };
 
         let _unknown = reader.read_u32()?;
-        let gain = Decibels::new(reader.read_f32()?);
+        let gain = reader.read_decibels_db()?;
 
         for i in 0..Self::BAND_COUNT {
             shape[1][i] = reader.read_f32()?;
@@ -321,13 +321,13 @@ impl EffectRead for CarveEq {
 
         if effect_version > 1022 {
             // Added in Phase Plant 1.8.14
-            spectrum_view.y_min = Decibels::new(reader.read_f32()?);
-            spectrum_view.y_max = Decibels::new(reader.read_f32()?);
+            spectrum_view.y_min = reader.read_decibels_db()?;
+            spectrum_view.y_max = reader.read_decibels_db()?;
 
             // The order of these two is reversed for an initially created
             // Slice EQ. Once a zoom or pan has been made the order is reversed.
-            spectrum_view.x_min = Frequency::new::<hertz>(reader.read_f32()?);
-            spectrum_view.x_max = Frequency::new::<hertz>(reader.read_f32()?);
+            spectrum_view.x_min = reader.read_hertz()?;
+            spectrum_view.x_max = reader.read_hertz()?;
 
             spectrum_view.normalize();
         }
@@ -373,7 +373,7 @@ impl EffectWrite for CarveEq {
         writer.write_u32(0)?;
         writer.write_u32(0)?;
         writer.write_u8(0)?;
-        writer.write_f32(self.mix.get::<ratio>())?;
+        writer.write_ratio(self.mix)?;
         writer.write_f32(self.gain.db())?;
         writer.write_bool32(enabled)?;
 

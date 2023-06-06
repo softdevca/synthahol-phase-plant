@@ -203,7 +203,7 @@ pub struct GranularGenerator {
     pub phase_jitter: Ratio,
 
     /// Amplitude of the waveform. Gain is set in the Out generator.
-    pub level: f32,
+    pub level: Ratio,
 
     /// A file containing the samples to play back. Usually in a format like FLAC, MP3 or WAV.
     pub sample_contents: Vec<u8>,
@@ -400,7 +400,7 @@ mod test {
         assert_eq!(generator.shift, Frequency::zero());
         assert_eq!(generator.phase_offset, Ratio::zero());
         assert_eq!(generator.phase_jitter, Ratio::zero());
-        assert_eq!(generator.level, 1.0);
+        assert_eq!(generator.level.get::<percent>(), 100.0);
         assert!(generator.sample_contents.is_empty());
         assert!(generator.sample_name.is_none());
         assert!(generator.sample_path.is_none());
@@ -445,7 +445,7 @@ mod test {
         assert_eq!(generator.shift, Frequency::zero());
         assert_eq!(generator.phase_offset, Ratio::zero());
         assert_eq!(generator.phase_jitter, Ratio::zero());
-        assert_eq!(generator.level, 1.0);
+        assert_eq!(generator.level.get::<percent>(), 100.0);
         assert!(generator.sample_contents.is_empty());
         assert!(generator.sample_name.is_none());
         assert!(generator.sample_path.is_none());
@@ -560,7 +560,7 @@ mod test {
         assert_eq!(generator.base_pitch, midi!(D, 5).into_byte() as f32);
         assert!(!generator.base_pitch_locked);
         assert!(generator.align_phases);
-        assert_eq!(generator.level, 0.75);
+        assert_eq!(generator.level.get::<percent>(), 75.0);
 
         let preset = read_generator_preset(
             "granular_generator",

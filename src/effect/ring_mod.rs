@@ -3,22 +3,23 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.5               | 1032           |
-//! | 1.8.13              | 1032           |
+//! | 1.8.5 to 1.8.13     | 1032           |
 //! | 2.0.16              | 1043           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
-use uom::si::f32::Ratio;
-use uom::si::ratio::{percent, ratio};
+use uom::num::Zero;
+use uom::si::f32::{Frequency, Ratio};
+use uom::si::frequency::hertz;
+use uom::si::ratio::percent;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 /// The file format stores the names rather than a discriminant.
 #[derive(Copy, Clone, Debug, EnumIter, Eq, PartialEq)]
@@ -63,10 +64,10 @@ impl Display for ModulationMode {
 
 #[derive(Clone, Debug)]
 pub struct RingMod {
-    pub bias: f32,
-    pub rectify: f32,
-    pub frequency: f32,
-    pub spread: f32,
+    pub bias: Ratio,
+    pub rectify: Ratio,
+    pub frequency: Frequency,
+    pub spread: Ratio,
     pub mix: Ratio,
     pub modulation_mode: ModulationMode,
     unknown2: u32,
@@ -88,11 +89,11 @@ impl PartialEq for RingMod {
 
 impl Default for RingMod {
     fn default() -> Self {
-        RingMod {
-            bias: 0.0,
-            rectify: 0.0,
-            frequency: 440.0,
-            spread: 0.0,
+        Self {
+            bias: Ratio::zero(),
+            rectify: Ratio::zero(),
+            frequency: Frequency::new::<hertz>(440.0),
+            spread: Ratio::zero(),
             mix: Ratio::new::<percent>(100.0),
             modulation_mode: ModulationMode::SineOscillator,
             unknown2: 0,
@@ -136,15 +137,15 @@ impl EffectRead for RingMod {
         }
 
         let enabled = reader.read_bool32()?;
-        let frequency = reader.read_f32()?;
-        let spread = reader.read_f32()?;
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
-        let bias = reader.read_f32()?;
-        let rectify = reader.read_f32()?;
+        let frequency = reader.read_hertz()?;
+        let spread = reader.read_ratio()?;
+        let mix = reader.read_ratio()?;
+        let bias = reader.read_ratio()?;
+        let rectify = reader.read_ratio()?;
         let minimized = reader.read_bool32()?;
 
-        reader.expect_u32(0, "ring_mod_unknown3")?;
-        reader.expect_u32(0, "ring_mod_unknown4")?;
+        reader.expect_u32(0, "ring_mod_unknown_4")?;
+        reader.expect_u32(0, "ring_mod_unknown_5")?;
         let unknown3 = reader.read_u32()?;
 
         let mut unknown2 = 0;
@@ -180,11 +181,11 @@ impl EffectWrite for RingMod {
         minimized: bool,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
-        writer.write_f32(self.frequency)?;
-        writer.write_f32(self.spread)?;
-        writer.write_f32(self.mix.get::<ratio>())?;
-        writer.write_f32(self.bias)?;
-        writer.write_f32(self.rectify)?;
+        writer.write_hertz(self.frequency)?;
+        writer.write_ratio(self.spread)?;
+        writer.write_ratio(self.mix)?;
+        writer.write_ratio(self.bias)?;
+        writer.write_ratio(self.rectify)?;
         writer.write_bool32(minimized)?;
 
         writer.write_u32(0)?;
@@ -223,21 +224,21 @@ mod test {
         assert_eq!(snapin.preset_path, vec!["factory", "Crunch Time.ksrm"]);
         assert!(!snapin.preset_edited);
         let effect = snapin.effect.as_ring_mod().unwrap();
-        assert_relative_eq!(effect.bias, 0.18667, epsilon = 0.001);
-        assert_relative_eq!(effect.rectify, -0.346667, epsilon = 0.001);
+        assert_relative_eq!(effect.bias.get::<percent>(), 18.667, epsilon = 0.001);
+        assert_relative_eq!(effect.rectify.get::<percent>(), -34.6667, epsilon = 0.001);
         assert_relative_eq!(effect.mix.get::<percent>(), 100.0, epsilon = 0.001);
-        assert_relative_eq!(effect.frequency, 3835.668, epsilon = 0.001);
-        assert_relative_eq!(effect.spread, 0.998, epsilon = 0.001);
+        assert_relative_eq!(effect.frequency.get::<hertz>(), 3835.668, epsilon = 0.001);
+        assert_relative_eq!(effect.spread.get::<percent>(), 99.8, epsilon = 0.1);
         assert_eq!(effect.modulation_mode, ModulationMode::LowPassNoise);
     }
 
     #[test]
     fn default() {
         let effect = RingMod::default();
-        assert_eq!(effect.bias, 0.0);
-        assert_eq!(effect.rectify, 0.0);
-        assert_eq!(effect.frequency, 440.0);
-        assert_eq!(effect.spread, 0.0);
+        assert_eq!(effect.bias.get::<percent>(), 0.0);
+        assert_eq!(effect.rectify.get::<percent>(), 0.0);
+        assert_eq!(effect.frequency.get::<hertz>(), 440.0);
+        assert_eq!(effect.spread.get::<percent>(), 0.0);
         assert_eq!(effect.mix.get::<percent>(), 100.0);
         assert_eq!(effect.modulation_mode, ModulationMode::SineOscillator);
     }
@@ -317,8 +318,8 @@ mod test {
         assert!(!snapin.enabled);
         assert!(!snapin.minimized);
         let effect = snapin.effect.as_ring_mod().unwrap();
-        assert_relative_eq!(effect.bias, 0.1, epsilon = 0.005);
-        assert_relative_eq!(effect.rectify, 0.15, epsilon = 0.01);
+        assert_relative_eq!(effect.bias.get::<percent>(), 10.0, epsilon = 0.5);
+        assert_relative_eq!(effect.rectify.get::<percent>(), 15.0, epsilon = 0.2);
         assert_relative_eq!(effect.mix.get::<percent>(), 31.2, epsilon = 0.01);
 
         let preset = read_effect_preset(
@@ -330,8 +331,8 @@ mod test {
         assert!(snapin.enabled);
         assert!(snapin.minimized);
         let effect = snapin.effect.as_ring_mod().unwrap();
-        assert_relative_eq!(effect.frequency, 432.0, epsilon = 1.0);
-        assert_relative_eq!(effect.spread, 0.1, epsilon = 0.001);
+        assert_relative_eq!(effect.frequency.get::<hertz>(), 432.0, epsilon = 1.0);
+        assert_relative_eq!(effect.spread.get::<percent>(), 10.0, epsilon = 0.1);
         assert_eq!(effect.modulation_mode, ModulationMode::OriginalSelf);
     }
 }

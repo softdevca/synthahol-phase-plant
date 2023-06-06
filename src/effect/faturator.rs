@@ -6,7 +6,7 @@
 //! | 1.6.9 to 1.8.13     | 1040           |
 //! | 2.0.16 to 2.1.0     | 1051           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -15,8 +15,8 @@ use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
 use uom::si::ratio::{percent, ratio};
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Faturator {
@@ -29,7 +29,7 @@ pub struct Faturator {
 
 impl Default for Faturator {
     fn default() -> Self {
-        Faturator {
+        Self {
             drive: Ratio::new::<percent>(51.8),
             fuzz: Ratio::new::<percent>(27.3),
             color: Frequency::new::<hertz>(50.0),
@@ -73,11 +73,11 @@ impl EffectRead for Faturator {
             ));
         }
 
-        let drive = Ratio::new::<ratio>(reader.read_f32()?);
-        let fuzz = Ratio::new::<ratio>(reader.read_f32()?);
-        let stereo_turbo = Ratio::new::<ratio>(reader.read_f32()?);
-        let color = Frequency::new::<hertz>(reader.read_f32()?);
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
+        let drive = reader.read_ratio()?;
+        let fuzz = reader.read_ratio()?;
+        let stereo_turbo = reader.read_ratio()?;
+        let color = reader.read_hertz()?;
+        let mix = reader.read_ratio()?;
         let enabled = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
 
@@ -112,7 +112,7 @@ impl EffectWrite for Faturator {
         writer.write_f32(self.fuzz.get::<ratio>())?;
         writer.write_f32(self.stereo_turbo.get::<ratio>())?;
         writer.write_f32(self.color.get::<hertz>())?;
-        writer.write_f32(self.mix.get::<ratio>())?;
+        writer.write_ratio(self.mix)?;
         writer.write_bool32(enabled)?;
         writer.write_bool32(minimized)?;
 

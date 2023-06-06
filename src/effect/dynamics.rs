@@ -9,22 +9,22 @@
 //! | 1.8.14              | 1003           |
 //! | 2.0.16              | 1014           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use uom::si::f32::Ratio;
-use uom::si::ratio::{percent, ratio};
+use uom::si::ratio::percent;
 
 use crate::Decibels;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Dynamics {
-    pub attack: f32,
-    pub release: f32,
+    pub attack: Ratio,
+    pub release: Ratio,
     pub knee: Decibels,
     pub in_gain: Decibels,
     pub out_gain: Decibels,
@@ -40,8 +40,8 @@ pub struct Dynamics {
 impl Default for Dynamics {
     fn default() -> Self {
         Self {
-            attack: 1.0,
-            release: 1.0,
+            attack: Ratio::new::<percent>(100.0),
+            release: Ratio::new::<percent>(100.0),
             knee: Decibels::new(2.5),
             in_gain: Decibels::ZERO,
             out_gain: Decibels::ZERO,
@@ -88,22 +88,22 @@ impl EffectRead for Dynamics {
             ));
         }
 
-        let in_gain = Decibels::new(reader.read_f32()?);
-        let out_gain = Decibels::new(reader.read_f32()?);
-        let low_threshold = Decibels::new(reader.read_f32()?);
+        let in_gain = reader.read_decibels_db()?;
+        let out_gain = reader.read_decibels_db()?;
+        let low_threshold = reader.read_decibels_db()?;
         let low_ratio = reader.read_f32()?;
-        let high_threshold = Decibels::new(reader.read_f32()?);
+        let high_threshold = reader.read_decibels_db()?;
         let high_ratio = reader.read_f32()?;
-        let release = reader.read_f32()?;
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
+        let release = reader.read_ratio()?;
+        let mix = reader.read_ratio()?;
         let enabled = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
 
         reader.expect_u32(0, "dynamics_unknown1")?;
         reader.expect_u32(0, "dynamics_unknown2")?;
 
-        let attack = reader.read_f32()?;
-        let knee = Decibels::new(reader.read_f32()?);
+        let attack = reader.read_ratio()?;
+        let knee = reader.read_decibels_db()?;
 
         if effect_version > 1003 {
             reader.expect_u32(0, "dynamics_unknown3")?;
@@ -141,19 +141,19 @@ impl EffectWrite for Dynamics {
         writer.write_f32(self.low_ratio)?;
         writer.write_f32(self.high_threshold.db())?;
         writer.write_f32(self.high_ratio)?;
-        writer.write_f32(self.release)?;
-        writer.write_f32(self.mix.get::<ratio>())?;
+        writer.write_ratio(self.release)?;
+        writer.write_ratio(self.mix)?;
         writer.write_bool32(enabled)?;
         writer.write_bool32(minimized)?;
 
-        writer.write_u32(0)?; // dynamics_unknown1
-        writer.write_u32(0)?; // dynamics_unknown2
+        writer.write_u32(0)?; // dynamics_unknown_1
+        writer.write_u32(0)?; // dynamics_unknown_2
 
-        writer.write_f32(self.attack)?;
+        writer.write_ratio(self.attack)?;
         writer.write_f32(self.knee.db())?;
 
         if self.write_version() > 1003 {
-            writer.write_u32(0)?; // dynamics_unknown3
+            writer.write_u32(0)?; // dynamics_unknown_3
         }
 
         Ok(())
@@ -168,17 +168,17 @@ impl EffectWrite for Dynamics {
 mod test {
     use approx::assert_relative_eq;
 
+    use crate::Decibels;
     use crate::effect::Filter;
     use crate::test::read_effect_preset;
-    use crate::Decibels;
 
     use super::*;
 
     #[test]
     fn default() {
         let effect = Dynamics::default();
-        assert_eq!(effect.attack, 1.0);
-        assert_eq!(effect.release, 1.0);
+        assert_eq!(effect.attack.get::<percent>(), 100.0);
+        assert_eq!(effect.release.get::<percent>(), 100.0);
         assert_eq!(effect.knee, Decibels::new(2.5));
         assert_eq!(effect.in_gain, Decibels::ZERO);
         assert_eq!(effect.out_gain, Decibels::ZERO);
@@ -240,8 +240,8 @@ mod test {
         .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_dynamics().unwrap();
-        assert_relative_eq!(effect.attack, 0.25);
-        assert_relative_eq!(effect.release, 0.50, epsilon = 0.0001);
+        assert_relative_eq!(effect.attack.get::<percent>(), 25.0);
+        assert_relative_eq!(effect.release.get::<percent>(), 50.0, epsilon = 0.0001);
         assert_eq!(effect.knee, Decibels::new(10.0));
 
         let preset = read_effect_preset(

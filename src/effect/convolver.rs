@@ -9,17 +9,16 @@
 //! | 2.0.12              | 1017           |
 //! | 2.0.16 to 2.1.0     | 1018           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use uom::num::Zero;
 use uom::si::f32::{Ratio, Time};
-use uom::si::ratio::{percent, ratio};
-use uom::si::time::second;
+use uom::si::ratio::percent;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Convolver {
@@ -45,7 +44,7 @@ pub struct Convolver {
 
 impl Default for Convolver {
     fn default() -> Self {
-        Convolver {
+        Self {
             ir_name: None,
             ir_path: Vec::new(),
             start: Ratio::zero(),
@@ -97,21 +96,21 @@ impl EffectRead for Convolver {
             ));
         }
 
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
-        let stretch = Ratio::new::<ratio>(reader.read_f32()?);
+        let mix = reader.read_ratio()?;
+        let stretch = reader.read_ratio()?;
         let enabled = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
 
         reader.expect_u32(0, "convolver_unknown_5")?;
         reader.expect_u32(0, "convolver_unknown_6")?;
 
-        let end = Ratio::new::<ratio>(reader.read_f32()?);
-        let fade_out = Ratio::new::<ratio>(reader.read_f32()?);
-        let feedback = Ratio::new::<ratio>(reader.read_f32()?);
-        let tone = Ratio::new::<ratio>(reader.read_f32()?);
-        let start = Ratio::new::<ratio>(reader.read_f32()?);
-        let fade_in = Ratio::new::<ratio>(reader.read_f32()?);
-        let delay = Time::new::<second>(reader.read_f32()?);
+        let end = reader.read_ratio()?;
+        let fade_out = reader.read_ratio()?;
+        let feedback = reader.read_ratio()?;
+        let tone = reader.read_ratio()?;
+        let start = reader.read_ratio()?;
+        let fade_in = reader.read_ratio()?;
+        let delay = reader.read_seconds()?;
 
         reader.expect_u32(0, "convolver_unknown_7")?;
         reader.expect_u32(4, "convolver_unknown_8")?;

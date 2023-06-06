@@ -2,8 +2,8 @@
 
 use crate::effect::{Effect, Filter};
 use crate::io::WRITE_SAME_AS;
-use crate::version::Version;
 use crate::Metadata;
+use crate::version::Version;
 
 type SnapinPosition = u16;
 
@@ -65,7 +65,7 @@ impl Snapin {
 /// contain.
 impl Default for Snapin {
     fn default() -> Self {
-        Snapin {
+        Self {
             name: Default::default(),
             enabled: true,
             minimized: false,

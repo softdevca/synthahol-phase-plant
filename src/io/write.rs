@@ -7,22 +7,22 @@ use std::io::{Error, ErrorKind, Result, Seek, SeekFrom, Write};
 use std::mem::size_of;
 
 use byteorder::{LittleEndian, WriteBytesExt};
-use log::{trace, Level};
+use log::{Level, trace};
 use serde::Serialize;
 use serde_json::ser::PrettyFormatter;
 use serde_json::Serializer;
 use uom::si::frequency::hertz;
-use uom::si::ratio::{percent, ratio};
+use uom::si::ratio::ratio;
 use uom::si::time::second;
 
+use crate::*;
 use crate::generator::{BlankGenerator, Generator, GeneratorMode, Group};
 use crate::io::generators::GeneratorBlock;
-use crate::io::modulators::ModulatorBlock;
 use crate::io::MetadataJson;
+use crate::io::modulators::ModulatorBlock;
 use crate::modulation::*;
 use crate::modulator::{BlankModulator, Modulator};
 use crate::text::HashTag;
-use crate::*;
 
 /// Files are written the same as this version of Phase Plant.
 pub(crate) const WRITE_SAME_AS: PhasePlantRelease = PhasePlantRelease::V2_1_0;
@@ -102,6 +102,26 @@ impl<T: Write + Seek> PhasePlantWriter<T> {
         self.inner.write_f32::<LittleEndian>(value)
     }
 
+    pub(crate) fn write_hertz(&mut self, value: Frequency) -> Result<()> {
+        self.write_f32(value.get::<hertz>())
+    }
+
+    pub(crate) fn write_decibels_db(&mut self, value: Decibels) -> Result<()> {
+        self.write_f32(value.db())
+    }
+
+    pub(crate) fn write_decibels_linear(&mut self, value: Decibels) -> Result<()> {
+        self.write_f32(value.linear())
+    }
+
+    pub(crate) fn write_ratio(&mut self, value: Ratio) -> Result<()> {
+        self.write_f32(value.get::<ratio>())
+    }
+
+    pub(crate) fn write_seconds(&mut self, value: Time) -> Result<()> {
+        self.write_f32(value.get::<second>())
+    }
+
     pub(crate) fn write_u8(&mut self, value: u8) -> Result<()> {
         self.inner.write_u8(value)
     }
@@ -149,14 +169,14 @@ impl<T: Write + Seek> PhasePlantWriter<T> {
     }
 
     pub(crate) fn write_envelope(&mut self, envelope: &Envelope) -> Result<()> {
-        self.write_f32(envelope.delay.get::<second>())?;
-        self.write_f32(envelope.attack.get::<second>())?;
+        self.write_seconds(envelope.delay)?;
+        self.write_seconds(envelope.attack)?;
         self.write_f32(envelope.attack_curve)?;
-        self.write_f32(envelope.hold.get::<second>())?;
-        self.write_f32(envelope.decay.get::<second>())?;
+        self.write_seconds(envelope.hold)?;
+        self.write_seconds(envelope.decay)?;
         self.write_f32(envelope.decay_falloff)?;
-        self.write_f32(envelope.sustain.get::<percent>())?;
-        self.write_f32(envelope.release.get::<second>())?;
+        self.write_ratio(envelope.sustain)?;
+        self.write_seconds(envelope.release)?;
         self.write_f32(envelope.release_falloff)
     }
 }
@@ -174,10 +194,10 @@ impl GeneratorBlock {
         );
         writer.write_f32(self.fine_tuning)?;
         writer.write_f32(self.harmonic)?;
-        writer.write_f32(self.shift.get::<hertz>())?;
-        writer.write_f32(self.level)?;
-        writer.write_f32(self.phase_offset.get::<ratio>())?;
-        writer.write_f32(self.phase_jitter.get::<ratio>())?;
+        writer.write_hertz(self.shift)?;
+        writer.write_ratio(self.level)?;
+        writer.write_ratio(self.phase_offset)?;
+        writer.write_ratio(self.phase_jitter)?;
 
         // Unison
         trace!(
@@ -187,9 +207,9 @@ impl GeneratorBlock {
         );
         let unison = &self.unison;
         writer.write_u32(unison.voices)?;
-        writer.write_f32(unison.detune)?;
-        writer.write_f32(unison.spread)?;
-        writer.write_f32(unison.blend)?;
+        writer.write_f32(unison.detune_cents)?;
+        writer.write_ratio(unison.spread)?;
+        writer.write_ratio(unison.blend)?;
 
         // Sample player
         trace!(
@@ -198,39 +218,39 @@ impl GeneratorBlock {
             self.base_pitch
         );
         writer.write_f32(self.base_pitch)?;
-        writer.write_f32(self.offset_position)?;
+        writer.write_ratio(self.offset_position)?;
         writer.write_u32(self.sample_loop_mode as u32)?;
-        writer.write_f32(self.loop_start_position)?;
-        writer.write_f32(self.loop_length)?;
-        writer.write_f32(self.crossfade_amount)?;
+        writer.write_ratio(self.loop_start_position)?;
+        writer.write_ratio(self.loop_length)?;
+        writer.write_ratio(self.crossfade_amount)?;
 
         trace!("generator: wavetable frame pos {}", writer.pos_text());
         writer.write_f32(self.wavetable_frame)?;
-        writer.write_f32(self.band_limit)?;
+        writer.write_hertz(self.band_limit)?;
 
         writer.write_u32(self.analog_waveform as u32)?;
         writer.write_f32(self.sync_multiplier)?;
-        writer.write_f32(self.pulse_width)?;
+        writer.write_ratio(self.pulse_width)?;
         writer.write_u32(self.seed_mode as u32)?;
-        writer.write_f32(self.noise_slope)?;
-        writer.write_f32(self.stereo)?;
+        writer.write_decibels_db(self.noise_slope)?;
+        writer.write_ratio(self.stereo)?;
         writer.write_u32(self.noise_waveform as u32)?;
 
         trace!("generator: filter effect pos {}", writer.pos_text());
         writer.write_u32(self.filter_effect.filter_mode as u32)?;
-        writer.write_f32(self.filter_effect.cutoff.get::<hertz>())?;
+        writer.write_hertz(self.filter_effect.cutoff)?;
         writer.write_f32(self.filter_effect.q)?;
-        writer.write_f32(self.filter_effect.gain.linear())?;
+        writer.write_decibels_linear(self.filter_effect.gain)?;
 
         writer.write_u32(self.distortion_effect.mode as u32)?;
-        writer.write_f32(self.distortion_effect.drive.linear())?;
-        writer.write_f32(self.distortion_effect.bias)?;
-        writer.write_f32(self.distortion_effect.mix.get::<ratio>())?;
+        writer.write_decibels_linear(self.distortion_effect.drive)?;
+        writer.write_ratio(self.distortion_effect.bias)?;
+        writer.write_ratio(self.distortion_effect.mix)?;
 
         writer.write_bool32(self.invert)?;
-        writer.write_f32(self.mix_level)?;
-        writer.write_f32(self.output_gain.linear())?;
-        writer.write_f32(self.pan.get::<ratio>())?;
+        writer.write_ratio(self.mix_level)?;
+        writer.write_decibels_linear(self.output_gain)?;
+        writer.write_ratio(self.pan)?;
         writer.write_u32(self.output_destination as u32)?;
 
         trace!("generator: envelope pos {}", writer.pos_text());
@@ -338,7 +358,7 @@ impl Preset {
             );
             writer.write_bool32(lane.enabled)?;
             writer.write_f32(lane.gain)?;
-            writer.write_f32(lane.mix.get::<ratio>())?;
+            writer.write_ratio(lane.mix)?;
             writer.write_u32(lane.destination as u32)?;
         }
 
@@ -410,10 +430,10 @@ impl Preset {
             if !block.mode.is_blank() {
                 trace!("modulator: start of LFO block pos {}", writer.pos_text());
             }
-            writer.write_f32(block.depth.get::<ratio>())?;
+            writer.write_ratio(block.depth)?;
             writer.write_bool32(block.retrigger)?;
             writer.write_u32(block.output_range as u32)?;
-            writer.write_f32(block.rate.frequency.get::<hertz>())?;
+            writer.write_hertz(block.rate.frequency)?;
             writer.write_u32(block.rate.numerator)?;
             writer.write_u32(block.rate.denominator as u32)?;
             writer.write_bool32(block.rate.sync)?;
@@ -428,7 +448,7 @@ impl Preset {
             if !block.mode.is_blank() {
                 trace!("modulator: envelope end pos {}", writer.pos_text());
             }
-            writer.write_f32(block.phase_offset.get::<ratio>())?;
+            writer.write_ratio(block.phase_offset)?;
             writer.write_bool32(block.one_shot)?;
             writer.write_f32(block.multiplier)?;
             if !block.mode.is_blank() {
@@ -507,10 +527,10 @@ impl Preset {
         //
 
         trace!("global unison: pos {}", writer.pos_text());
-        writer.write_u32(self.unison.voices)?; // FIXME: VOICES DOES NOT MATCH ACTUAL INIT - S/B 8 not 4
-        writer.write_f32(self.unison.detune)?;
-        writer.write_f32(self.unison.spread)?;
-        writer.write_f32(self.unison.blend)?;
+        writer.write_u32(self.unison.voices)?;
+        writer.write_f32(self.unison.detune_cents)?;
+        writer.write_ratio(self.unison.spread)?;
+        writer.write_ratio(self.unison.blend)?;
 
         writer.write_f32(self.master_gain)?;
 
@@ -601,9 +621,9 @@ impl Preset {
         writer.write_u32(self.unison.mode as u32)?;
 
         for block in &gen_blocks {
-            writer.write_f32(block.unison.bias)?;
+            writer.write_ratio(block.unison.bias)?;
         }
-        writer.write_f32(self.unison.bias)?;
+        writer.write_ratio(self.unison.bias)?;
 
         for block in &gen_blocks {
             writer.write_bool32(block.unison.enabled)?;

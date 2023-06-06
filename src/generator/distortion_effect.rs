@@ -1,6 +1,5 @@
-//! Phase Plant [distortion](https://kilohearts.com/products/distortion)
-
-// FIXME: This appears to be under the generator::distortion module instead of just generator.
+//! [Distortion Effect](https://kilohearts.com/docs/phase_plant/#distortion_effect)
+//! generator
 
 use std::any::Any;
 
@@ -28,13 +27,11 @@ impl Default for DistortionEffect {
 
 impl From<&GeneratorBlock> for DistortionEffect {
     fn from(block: &GeneratorBlock) -> Self {
-        let mut effect = block.distortion_effect.clone();
-        effect.drive = Decibels::new(4.0);
-        DistortionEffect {
+        Self {
             id: block.id,
             enabled: block.enabled,
             name: block.name.to_owned(),
-            effect,
+            effect: block.distortion_effect.clone(),
         }
     }
 }
@@ -76,6 +73,8 @@ impl dyn Generator {
 
 #[cfg(test)]
 mod test {
+    use approx::assert_relative_eq;
+
     use crate::effect::DistortionMode;
     use crate::generator::Generator;
     use crate::test::read_generator_preset;
@@ -102,7 +101,7 @@ mod test {
         .unwrap();
         let generator: &DistortionEffect = preset.generator(1).unwrap();
         assert_eq!(generator.effect.mode, DistortionMode::Foldback);
-        assert_eq!(generator.effect.bias, 0.25);
+        assert_eq!(generator.effect.bias.get::<percent>(), 25.0);
     }
 
     #[test]
@@ -129,11 +128,11 @@ mod test {
             assert!(generator.enabled);
             assert_eq!(generator.name(), "Distortion".to_owned());
             assert_eq!(generator.effect.mode, DistortionMode::Overdrive);
-            // assert_eq!(generator.effect.drive, ); // FIXME
-            // assert_eq!(generator.effect.dynamics, );
-            // assert_eq!(generator.effect.bias, 1.0);
-            assert_eq!(generator.effect.spread, 0.0);
-            assert_eq!(generator.effect.mix.get::<percent>(), 100.0);
+            println!("DB: {:?}", generator.effect.drive.db());
+            assert_relative_eq!(generator.effect.drive.db(), 12.04, epsilon = 0.01);
+            assert_relative_eq!(generator.effect.bias.get::<percent>(), 0.0);
+            assert_relative_eq!(generator.effect.spread.get::<percent>(), 0.0);
+            assert_relative_eq!(generator.effect.mix.get::<percent>(), 100.0);
         }
     }
 
@@ -146,7 +145,8 @@ mod test {
         .unwrap();
         let generator: &DistortionEffect = preset.generator(1).unwrap();
         assert_eq!(generator.effect.mode, DistortionMode::Quantize);
-        // FIXME: Test lane destination is sideband
+        let envelope_output: &EnvelopeOutput = preset.generator(2).unwrap();
+        assert_eq!(envelope_output.destination, OutputDestination::Sideband);
     }
 
     #[test]
@@ -158,8 +158,7 @@ mod test {
         .unwrap();
         let generator: &DistortionEffect = preset.generator(1).unwrap();
         assert_eq!(generator.effect.mode, DistortionMode::Saturate);
-        // FIXME
-        // assert_eq!(generator.effect.drive, 1Decibels::ZERO.linear());
+        assert_eq!(generator.effect.drive.db(), 10.0);
     }
 
     #[test]
@@ -171,6 +170,6 @@ mod test {
         .unwrap();
         let generator: &DistortionEffect = preset.generator(1).unwrap();
         assert_eq!(generator.effect.mode, DistortionMode::Sine);
-        // assert_eq!(generator.effect.spread, 0.11);
+        assert_eq!(generator.effect.spread.get::<percent>(), 11.0);
     }
 }

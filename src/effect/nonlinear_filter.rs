@@ -8,7 +8,7 @@
 //! | 1.8.16              | 1000           |
 //! | 2.0.16              | 1011           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -19,8 +19,8 @@ use uom::si::frequency::hertz;
 
 use crate::effect::FilterMode;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Copy, Clone, Debug, FromRepr, Eq, PartialEq)]
 #[repr(u32)]
@@ -123,7 +123,7 @@ impl EffectRead for NonlinearFilter {
 
         let filter_mode = FilterMode::from_id(reader.read_u32()?)?;
         let mode = NonlinearFilterMode::from_id(reader.read_u32()?)?;
-        let cutoff = Frequency::new::<hertz>(reader.read_f32()?);
+        let cutoff = reader.read_hertz()?;
         let q = reader.read_f32()?;
         let drive = reader.read_f32()?;
         let enabled = reader.read_bool32()?;

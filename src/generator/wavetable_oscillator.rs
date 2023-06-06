@@ -24,9 +24,9 @@ pub struct WavetableOscillator {
     pub shift: Frequency,
     pub phase_offset: Ratio,
     pub phase_jitter: Ratio,
-    pub level: f32,
+    pub level: Ratio,
     pub frame: f32,
-    pub band_limit: f32,
+    pub band_limit: Frequency,
     pub unison: Unison,
     pub wavetable_contents: Vec<u8>,
     pub wavetable_edited: bool,
@@ -105,11 +105,12 @@ impl dyn Generator {
 mod test {
     use approx::assert_relative_eq;
     use uom::si::f32::Frequency;
+    use uom::si::frequency::hertz;
 
     use crate::test::read_generator_preset;
 
-    use super::WavetableOscillator;
     use super::*;
+    use super::WavetableOscillator;
 
     #[test]
     fn init() {
@@ -125,14 +126,14 @@ mod test {
             let generator: &WavetableOscillator = preset.generator(1).unwrap();
             assert!(generator.enabled);
             assert_eq!(generator.name(), "Wavetable".to_owned());
-            assert_eq!(generator.level, 1.0);
+            assert_eq!(generator.level.get::<percent>(), 100.0);
             assert_eq!(generator.tuning, 0.0);
             assert_eq!(generator.harmonic, 1.0);
             assert_eq!(generator.shift, Frequency::zero());
             assert_eq!(generator.phase_offset, Ratio::zero());
             assert_eq!(generator.phase_jitter, Ratio::zero());
             assert_eq!(generator.frame, 0.0);
-            assert_relative_eq!(generator.band_limit, 22050.0);
+            assert_relative_eq!(generator.band_limit.get::<hertz>(), 22050.0);
             assert_eq!(
                 generator.wavetable_name,
                 Some("Default Wavetable".to_owned())
@@ -198,7 +199,7 @@ mod test {
         .unwrap();
         let generator: &WavetableOscillator = preset.generator(1).unwrap();
         assert_eq!(generator.frame, 32.0);
-        assert_relative_eq!(generator.band_limit, 8000.0, epsilon = 0.001);
+        assert_relative_eq!(generator.band_limit.get::<hertz>(), 8000.0, epsilon = 0.001);
 
         let preset = read_generator_preset(
             "wavetable_oscillator",
@@ -246,8 +247,16 @@ mod test {
         .unwrap();
         let generator: &WavetableOscillator = preset.generator(1).unwrap();
         assert!(generator.unison.enabled);
-        assert_relative_eq!(generator.unison.blend, 0.25);
-        assert_relative_eq!(generator.unison.bias, 0.1);
+        assert_relative_eq!(
+            generator.unison.blend.get::<percent>(),
+            25.0,
+            epsilon = 0.001
+        );
+        assert_relative_eq!(
+            generator.unison.bias.get::<percent>(),
+            10.0,
+            epsilon = 0.001
+        );
 
         let preset = read_generator_preset(
             "wavetable_oscillator",
@@ -256,8 +265,8 @@ mod test {
         .unwrap();
         let generator: &WavetableOscillator = preset.generator(1).unwrap();
         assert!(generator.unison.enabled);
-        assert_relative_eq!(generator.unison.detune, 15.0);
-        assert_relative_eq!(generator.unison.spread, 0.5);
+        assert_relative_eq!(generator.unison.detune_cents, 15.0);
+        assert_relative_eq!(generator.unison.spread.get::<percent>(), 50.0);
 
         let preset = read_generator_preset(
             "wavetable_oscillator",

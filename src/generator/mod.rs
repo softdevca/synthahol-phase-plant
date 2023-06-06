@@ -2,7 +2,7 @@
 
 use std::any::Any;
 
-use downcast_rs::{impl_downcast, Downcast};
+use downcast_rs::{Downcast, impl_downcast};
 use strum_macros::Display;
 
 pub use analog_oscillator::*;
@@ -252,7 +252,7 @@ mod test {
         assert!(!aux.invert);
 
         let mix: &MixRouting = preset.generator(8).unwrap();
-        assert_eq!(mix.level, 1.0);
+        assert_eq!(mix.level.get::<percent>(), 100.0);
 
         let output: &EnvelopeOutput = preset.generator(9).unwrap();
         assert_eq!(output.destination, OutputDestination::Lane1);

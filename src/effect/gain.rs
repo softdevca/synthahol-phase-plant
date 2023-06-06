@@ -3,19 +3,18 @@
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
 //! | 1.8.0               | 1038           |
-//! | 1.8.5               | 1039           |
-//! | 1.8.14              | 1039           |
+//! | 1.8.5 to 1.8.14     | 1039           |
 //! | 2.0.0               | 1048           |
 //! | 2.0.16              | 1050           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use crate::Decibels;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 // Phase Plant 1.8.6 added a percent fade mode in addition to existing decibel trim mode.
 

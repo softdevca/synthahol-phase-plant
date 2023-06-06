@@ -8,18 +8,19 @@
 //! | 2.0.12              | 1049           |
 //! | 2.0.16              | 1050           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use strum_macros::FromRepr;
+use uom::num::Zero;
 use uom::si::f32::Ratio;
-use uom::si::ratio::{percent, ratio};
+use uom::si::ratio::percent;
 
 use crate::Decibels;
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Copy, Clone, Debug, FromRepr, Eq, PartialEq)]
 #[repr(u32)]
@@ -50,9 +51,9 @@ impl DistortionMode {
 pub struct Distortion {
     pub mode: DistortionMode,
     pub drive: Decibels,
-    pub dynamics: f32,
-    pub bias: f32,
-    pub spread: f32,
+    pub dynamics: Ratio,
+    pub bias: Ratio,
+    pub spread: Ratio,
 
     // DC Filter was added in Phase Plant version 2.
     pub dc_filter: bool,
@@ -81,12 +82,12 @@ impl Clone for Distortion {
 
 impl Default for Distortion {
     fn default() -> Self {
-        Distortion {
+        Self {
             mode: DistortionMode::Overdrive,
             drive: Decibels::new(6.0),
-            dynamics: 0.5,
-            bias: 0.0,
-            spread: 0.0,
+            dynamics: Ratio::new::<percent>(50.0),
+            bias: Ratio::zero(),
+            spread: Ratio::zero(),
             dc_filter: true,
             mix: Ratio::new::<percent>(100.0),
         }
@@ -121,20 +122,20 @@ impl EffectRead for Distortion {
         }
 
         let enabled = reader.read_bool32()?;
-        let drive = Decibels::from_linear(reader.read_f32()?);
-        let bias = reader.read_f32()?;
-        let spread = reader.read_f32()?;
+        let drive = reader.read_decibels_linear()?;
+        let bias = reader.read_ratio()?;
+        let spread = reader.read_ratio()?;
         let mode = DistortionMode::from_id(reader.read_u32()?)?;
-        let dynamics = reader.read_f32()?;
-        let mix = Ratio::new::<ratio>(reader.read_f32()?);
+        let dynamics = reader.read_ratio()?;
+        let mix = reader.read_ratio()?;
         let minimized = reader.read_bool32()?;
 
-        reader.expect_u32(0, "distortion_unknown5")?;
-        reader.expect_u32(0, "distortion_unknown6")?;
+        reader.expect_u32(0, "distortion_unknown_1")?;
+        reader.expect_u32(0, "distortion_unknown_2")?;
 
         let mut dc_filter = true;
         if effect_version > 1038 {
-            reader.expect_u32(0, "distortion_unknown3")?;
+            reader.expect_u32(0, "distortion_unknown_3")?;
             dc_filter = reader.read_bool32()?;
         }
 
@@ -162,12 +163,12 @@ impl EffectWrite for Distortion {
         minimized: bool,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
-        writer.write_f32(self.drive.linear())?;
-        writer.write_f32(self.bias)?;
-        writer.write_f32(self.spread)?;
+        writer.write_decibels_linear(self.drive)?;
+        writer.write_ratio(self.bias)?;
+        writer.write_ratio(self.spread)?;
         writer.write_u32(self.mode as u32)?;
-        writer.write_f32(self.dynamics)?;
-        writer.write_f32(self.mix.get::<ratio>())?;
+        writer.write_ratio(self.dynamics)?;
+        writer.write_ratio(self.mix)?;
         writer.write_bool32(minimized)?;
 
         writer.write_u32(0)?;
@@ -200,9 +201,9 @@ mod test {
         let effect = Distortion::default();
         assert_eq!(effect.mode, DistortionMode::Overdrive);
         assert_relative_eq!(effect.drive.db(), 6.0, epsilon = 0.001);
-        assert_relative_eq!(effect.dynamics, 0.5, epsilon = 0.005);
-        assert_eq!(effect.bias, 0.0);
-        assert_eq!(effect.spread, 0.0);
+        assert_relative_eq!(effect.dynamics.get::<percent>(), 50.0, epsilon = 0.005);
+        assert_eq!(effect.bias.get::<percent>(), 0.0);
+        assert_eq!(effect.spread.get::<percent>(), 0.0);
         assert!(effect.dc_filter);
         assert_eq!(effect.mix.get::<percent>(), 100.0);
     }
@@ -230,9 +231,9 @@ mod test {
             // Cannot compare directly against the default because of floating point rounding
             assert_eq!(effect.mode, DistortionMode::Overdrive);
             assert_relative_eq!(effect.drive.db(), 6.0, epsilon = 0.01);
-            assert_relative_eq!(effect.dynamics, 0.5, epsilon = 0.005);
-            assert_eq!(effect.bias, 0.0);
-            assert_eq!(effect.spread, 0.0);
+            assert_relative_eq!(effect.dynamics.get::<percent>(), 50.0, epsilon = 0.5);
+            assert_eq!(effect.bias.get::<percent>(), 0.0);
+            assert_eq!(effect.spread.get::<percent>(), 0.0);
             assert!(effect.dc_filter);
             assert_eq!(effect.mix.get::<percent>(), 100.0);
         }
@@ -250,7 +251,7 @@ mod test {
         assert!(snapin.minimized);
         let effect = snapin.effect.as_distortion().unwrap();
         assert_eq!(effect.mode, DistortionMode::Foldback);
-        assert_eq!(effect.dynamics, 0.75);
+        assert_eq!(effect.dynamics.get::<percent>(), 75.0);
 
         let preset = read_effect_preset(
             "distortion",
@@ -274,8 +275,8 @@ mod test {
         assert!(!snapin.minimized);
         let effect = snapin.effect.as_distortion().unwrap();
         assert_eq!(effect.mode, DistortionMode::Sine);
-        assert_eq!(effect.bias, 0.25);
-        assert_eq!(effect.spread, 0.66);
+        assert_eq!(effect.bias.get::<percent>(), 25.0);
+        assert_eq!(effect.spread.get::<percent>(), 66.0);
         assert_eq!(effect.mix.get::<percent>(), 70.0);
     }
 }

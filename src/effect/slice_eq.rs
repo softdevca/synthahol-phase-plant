@@ -2,16 +2,14 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.7.0               | 1019           |
-//! | 1.7.9               | 1019           |
+//! | 1.7.0 to 1.7.9      | 1019           |
 //! | 1.8.0               | 1020           |
 //! | 1.8.14              | 1021           |
-//! | 2.0.16              | 1032           |
-//! | 2.1.0               | 1032           |
+//! | 2.0.16 to 2.1.0     | 1032           |
 
 // Phase Plant 1.8.14 added saving the zoom and pan settings of the view.
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -20,14 +18,14 @@ use log::trace;
 use strum_macros::{Display, FromRepr};
 use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
-use uom::si::ratio::{percent, ratio};
+use uom::si::ratio::percent;
 
+use crate::{Decibels, PhasePlantRelease};
 use crate::effect::{FalloffSpeed, FrequencyResolution, SpectrumView, StereoMode};
 use crate::version::Version;
-use crate::{Decibels, PhasePlantRelease};
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Copy, Clone, Debug, FromRepr, Eq, PartialEq)]
 #[repr(u32)]
@@ -152,7 +150,7 @@ impl SliceEqFilter {
 /// slots in the preset have slightly different values.
 impl Default for SliceEqFilter {
     fn default() -> Self {
-        SliceEqFilter {
+        Self {
             id: 1,
             channel_mode: ChannelMode::Both,
             filter_mode: SliceEqFilterMode::LowCut,
@@ -289,22 +287,22 @@ impl EffectRead for SliceEq {
                 ));
             }
 
-            let cutoff_frequency = Frequency::new::<hertz>(reader.read_f32()?);
+            let cutoff_frequency = reader.read_hertz()?;
             let q = reader.read_f32()?;
-            let gain = Decibels::new(reader.read_f32()?);
+            let gain = reader.read_decibels_db()?;
             let mut channel_mode = ChannelMode::Both;
 
             // The channel mode for the first 8 filters are appended after the
             // 8th filter, from then on the channel mode is included with each
             // filter.
             if filter_index == 7 {
-                effect_mix = Ratio::new::<ratio>(reader.read_f32()?);
+                effect_mix = reader.read_ratio()?;
                 stereo_mode = StereoMode::from_id(reader.read_u32()?)?;
                 spectrum_view.falloff_speed = FalloffSpeed::from_id(reader.read_u32()?)?;
                 spectrum_view.frequency_resolution =
                     FrequencyResolution::from_id(reader.read_u32()?)?;
                 edit_mode = ChannelMode::from_id(reader.read_u32()?)?;
-                effect_gain = Decibels::new(reader.read_f32()?);
+                effect_gain = reader.read_decibels_db()?;
 
                 for mode_index in 0..7 {
                     let channel_mode = ChannelMode::from_id(reader.read_u32()?)?;
@@ -340,13 +338,13 @@ impl EffectRead for SliceEq {
 
         if effect_version >= 1021 {
             // Added in Phase Plant 1.8.14
-            spectrum_view.y_min = Decibels::new(reader.read_f32()?);
-            spectrum_view.y_max = Decibels::new(reader.read_f32()?);
+            spectrum_view.y_min = reader.read_decibels_db()?;
+            spectrum_view.y_max = reader.read_decibels_db()?;
 
             // The order of these two is reversed for an initially created
             // Slice EQ. Once a zoom or pan has been made the order is reversed.
-            spectrum_view.x_min = Frequency::new::<hertz>(reader.read_f32()?);
-            spectrum_view.x_max = Frequency::new::<hertz>(reader.read_f32()?);
+            spectrum_view.x_min = reader.read_hertz()?;
+            spectrum_view.x_max = reader.read_hertz()?;
 
             spectrum_view.normalize();
         }

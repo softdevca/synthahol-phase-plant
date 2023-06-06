@@ -3,20 +3,22 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.8.5               | 1039           |
-//! | 1.8.16              | 1039           |
+//! | 1.8.5 to 1.8.16     | 1039           |
 //! | 2.0.12              | 1050           |
 
 use std::any::Any;
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
-use super::super::io::*;
+use uom::si::f32::Frequency;
+use uom::si::frequency::hertz;
+
 use super::{Effect, EffectMode};
+use super::super::io::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Disperser {
-    pub frequency: f32,
+    pub frequency: Frequency,
     pub amount: u32,
     pub pinch: f32,
     unknown2: bool,
@@ -24,8 +26,8 @@ pub struct Disperser {
 
 impl Default for Disperser {
     fn default() -> Self {
-        Disperser {
-            frequency: 130.0,
+        Self {
+            frequency: Frequency::new::<hertz>(130.0),
             amount: 18,
             pinch: 0.5,
             unknown2: true,
@@ -65,7 +67,7 @@ impl EffectRead for Disperser {
         }
 
         let amount = reader.read_u32()?;
-        let frequency = reader.read_f32()?;
+        let frequency = reader.read_hertz()?;
         let pinch = reader.read_f32()?;
 
         let unknown2 = reader.read_bool32()?;
@@ -73,10 +75,10 @@ impl EffectRead for Disperser {
         let enabled = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
 
-        reader.expect_u32(0, "disperser_unknown4")?;
-        reader.expect_u32(0, "disperser_unknown5")?;
+        reader.expect_u32(0, "disperser_unknown_1")?;
+        reader.expect_u32(0, "disperser_unknown_2")?;
         if effect_version > 1039 {
-            reader.expect_u32(0, "disperser_unknown5")?;
+            reader.expect_u32(0, "disperser_unknown_3")?;
         }
 
         Ok(EffectReadReturn::new(
@@ -100,7 +102,7 @@ impl EffectWrite for Disperser {
         minimized: bool,
     ) -> io::Result<()> {
         writer.write_u32(self.amount)?;
-        writer.write_f32(self.frequency)?;
+        writer.write_hertz(self.frequency)?;
         writer.write_f32(self.pinch)?;
 
         writer.write_bool32(self.unknown2)?;
@@ -134,7 +136,7 @@ mod test {
     #[test]
     fn default() {
         let effect = Disperser::default();
-        assert_relative_eq!(effect.frequency, 130.0, epsilon = 1.0);
+        assert_relative_eq!(effect.frequency.get::<hertz>(), 130.0, epsilon = 1.0);
         assert_eq!(effect.amount, 18);
         assert_eq!(effect.pinch, 0.50);
     }
@@ -159,7 +161,7 @@ mod test {
             assert!(snapin.enabled);
             assert!(!snapin.minimized);
             let effect = snapin.effect.as_disperser().unwrap();
-            assert_relative_eq!(effect.frequency, 130.0, epsilon = 1.0);
+            assert_relative_eq!(effect.frequency.get::<hertz>(), 130.0, epsilon = 1.0);
             assert_eq!(effect.amount, 18);
             assert_eq!(effect.pinch, 0.50);
         }
@@ -176,7 +178,7 @@ mod test {
         assert!(snapin.enabled);
         assert!(snapin.minimized);
         let effect = snapin.effect.as_disperser().unwrap();
-        assert_relative_eq!(effect.frequency, 200.0, epsilon = 0.001);
+        assert_relative_eq!(effect.frequency.get::<hertz>(), 200.0, epsilon = 0.001);
         assert_eq!(effect.amount, 10);
         assert_eq!(effect.pinch, 0.50);
 
@@ -186,7 +188,7 @@ mod test {
         assert!(!snapin.enabled);
         assert!(!snapin.minimized);
         let effect = snapin.effect.as_disperser().unwrap();
-        assert_relative_eq!(effect.frequency, 130.0, epsilon = 1.0);
+        assert_relative_eq!(effect.frequency.get::<hertz>(), 130.0, epsilon = 1.0);
         assert_eq!(effect.amount, 18);
         assert_relative_eq!(effect.pinch, 3.0, epsilon = 0.1);
     }

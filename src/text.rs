@@ -11,7 +11,7 @@ impl dyn HashTag {
         if cleaned.is_empty() {
             String::new()
         } else {
-            format!("#{}", cleaned)
+            format!("#{cleaned}")
         }
     }
 }
@@ -44,8 +44,8 @@ impl TextOptionExt<String> for Option<String> {
 
 #[cfg(test)]
 mod test {
-    use super::TextOptionExt;
     use super::*;
+    use super::TextOptionExt;
 
     #[test]
     fn empty_to_none() {
