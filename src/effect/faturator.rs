@@ -145,7 +145,7 @@ mod test {
             snapin.preset_name,
             "C:\\ProgramData/Kilohearts\\presets\\kfat\\Factory Presets\\Bass Driver.kfat"
         );
-        assert_eq!(snapin.preset_path, vec![""]);
+        assert!(snapin.preset_path.is_empty());
         assert!(!snapin.preset_edited);
 
         for file in &[

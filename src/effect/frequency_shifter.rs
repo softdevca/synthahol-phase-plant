@@ -75,9 +75,11 @@ impl EffectRead for FrequencyShifter {
         let frequency = Frequency::new::<kilohertz>(reader.read_f32()?);
         let minimized = reader.read_bool32()?;
 
-        reader.expect_u32(0, "frequency_shifter_unknown1")?;
-        reader.expect_u32(0, "frequency_shifter_unknown2")?;
-        reader.expect_u32(0, "frequency_shifter_unknown3")?;
+        reader.expect_u32(0, "frequency_shifter_unknown_1")?;
+        reader.expect_u32(0, "frequency_shifter_unknown_2")?;
+        if effect_version > 1037 {
+            reader.expect_u32(0, "frequency_shifter_unknown_3")?;
+        }
 
         Ok(EffectReadReturn::new(
             Box::new(FrequencyShifter { frequency }),
@@ -98,9 +100,11 @@ impl EffectWrite for FrequencyShifter {
         writer.write_f32(self.frequency.get::<kilohertz>())?;
         writer.write_bool32(minimized)?;
 
-        writer.write_u32(0)?; // frequency_shifter_unknown1
-        writer.write_u32(0)?; // frequency_shifter_unknown2
-        writer.write_u32(0)?; // frequency_shifter_unknown3
+        writer.write_u32(0)?; // frequency_shifter_unknown_1
+        writer.write_u32(0)?; // frequency_shifter_unknown_2
+        if self.write_version() > 1037 {
+            writer.write_u32(0)?; // frequency_shifter_unknown_3
+        }
         Ok(())
     }
 

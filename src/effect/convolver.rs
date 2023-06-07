@@ -5,7 +5,8 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 2.0.FIXME           | 1016           |
+//! | 1.8.18              | 1007           |
+//! | 2.0.0               | 1016           |
 //! | 2.0.12              | 1017           |
 //! | 2.0.16 to 2.1.0     | 1018           |
 
@@ -86,7 +87,7 @@ impl EffectRead for Convolver {
         reader: &mut PhasePlantReader<R>,
         effect_version: u32,
     ) -> io::Result<EffectReadReturn> {
-        if effect_version < 1017 {
+        if effect_version < 1007 {
             return Err(Error::new(
                 ErrorKind::InvalidData,
                 format!(

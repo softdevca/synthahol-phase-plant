@@ -4,6 +4,7 @@
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
 //! | 1.8.5 to 1.8.15     | 1015           |
+//! | 2.0.0               | 1024           |
 //! | 2.0.12              | 1025           |
 //! | 2.0.16              | 1026           |
 
@@ -86,10 +87,10 @@ impl EffectRead for ThreeBandEq {
         let enabled = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
 
-        reader.expect_u32(0, "three_band_eq_unknown1")?;
-        reader.expect_u32(0, "three_band_eq_unknown2")?;
-        if effect_version >= 1025 {
-            reader.expect_u32(0, "three_band_eq_unknown3")?;
+        reader.expect_u32(0, "three_band_eq_unknown_1")?;
+        reader.expect_u32(0, "three_band_eq_unknown_2")?;
+        if effect_version >= 1024 {
+            reader.expect_u32(0, "three_band_eq_unknown_3")?;
         }
 
         Ok(EffectReadReturn::new(
@@ -121,10 +122,10 @@ impl EffectWrite for ThreeBandEq {
         writer.write_bool32(enabled)?;
         writer.write_bool32(minimized)?;
 
-        writer.write_u32(0)?; // three_band_eq_unknown1
-        writer.write_u32(0)?; // three_band_eq_unknown2
+        writer.write_u32(0)?; // three_band_eq_unknown_1
+        writer.write_u32(0)?; // three_band_eq_unknown_2
         if self.write_version() >= 1025 {
-            writer.write_u32(0)?; // three_band_eq_unknown3
+            writer.write_u32(0)?; // three_band_eq_unknown_3
         }
 
         Ok(())

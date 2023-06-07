@@ -2,7 +2,8 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
-//! | 1.6.9 10. 1.8.16    | 1037           |
+//! | 1.6.9 to 1.8.13     | 1037
+//! | 2.0.0               | 1046           |
 //! | 2.0.12              | 1047           |
 //! | 2.0.16              | 1048           |
 
@@ -102,7 +103,7 @@ impl EffectRead for Chorus {
 
         reader.expect_u32(0, "chorus_unknown_1")?;
         reader.expect_u32(0, "chorus_unknown_2")?;
-        if effect_version >= 1047 {
+        if effect_version >= 1046 {
             reader.expect_u32(0, "chorus_unknown_3")?;
         }
 

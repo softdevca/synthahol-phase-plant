@@ -346,7 +346,7 @@ impl Preset {
 
         // Snapins, poly, mute and solo are later in the data.
         let default_lane = &Default::default();
-        for lane_index in 0..LANE_COUNT {
+        for lane_index in 0..Lane::COUNT {
             let lane = &self.lanes.get(lane_index).unwrap_or(default_lane);
             trace!("lane {lane_index}: {lane:?}, pos {}", writer.pos_text());
             trace!(
@@ -539,7 +539,7 @@ impl Preset {
         //
 
         let default_lane = Lane::default();
-        for lane_index in 0..LANE_COUNT {
+        for lane_index in 0..Lane::COUNT {
             trace!("lane {lane_index}: pos {}", writer.pos_text());
             let lane = &self.lanes.get(lane_index).unwrap_or(&default_lane);
             writer.write_u8(lane.poly_count)?;
@@ -551,7 +551,7 @@ impl Preset {
             writer.skip(2)?;
 
             // The last lane has less padding
-            if lane_index < LANE_COUNT - 1 {
+            if lane_index < Lane::COUNT - 1 {
                 writer.skip(2)?;
             }
         }
@@ -735,7 +735,7 @@ impl Preset {
         // Lanes containing Effects
         //
 
-        for lane_index in 0..LANE_COUNT {
+        for lane_index in 0..Lane::COUNT {
             trace!("lane {lane_index}: pos {}", writer.pos_text());
             if lane_index >= self.lanes.len() {
                 writer.write_u32(0)?;

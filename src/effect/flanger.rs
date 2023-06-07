@@ -4,6 +4,7 @@
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
 //! | 1.8.5 to 1.8.14     | 1002           |
+//! | 2.0.0               | 1011           |
 //! | 2.0.16              | 1013           |
 
 use std::any::{type_name, Any};
@@ -13,7 +14,7 @@ use std::io::{Error, ErrorKind, Read, Seek, Write};
 use uom::num::Zero;
 use uom::si::f32::{Frequency, Ratio, Time};
 use uom::si::frequency::hertz;
-use uom::si::ratio::percent;
+use uom::si::ratio::{percent, ratio};
 use uom::si::time::second;
 
 use super::super::io::*;
@@ -37,7 +38,7 @@ pub struct Flanger {
 
 impl Flanger {
     pub fn offset_degrees(&self) -> f32 {
-        self.offset.get::<percent>() * 360.0
+        self.offset.get::<ratio>() * 360.0
     }
 }
 
@@ -95,14 +96,13 @@ impl EffectRead for Flanger {
         let depth = reader.read_seconds()?;
         let rate = reader.read_hertz()?;
 
-        let offset = reader.read_f32()?;
-        if !(0.0..=1.0).contains(&offset) {
+        let offset = reader.read_ratio()?;
+        if !(-1.0..=1.0).contains(&offset.get::<ratio>()) {
             return Err(Error::new(
                 ErrorKind::InvalidData,
-                format!("Flanger offset {offset} is out of range"),
+                format!("Flanger offset {} is out of range", offset.get::<ratio>()),
             ));
         }
-        let offset = Ratio::new::<percent>(offset);
 
         let motion = reader.read_hertz()?;
         let feedback = reader.read_ratio()?;
@@ -234,6 +234,15 @@ mod test {
             assert_relative_eq!(effect.feedback.get::<percent>(), 0.0);
             assert_eq!(effect.mix.get::<percent>(), 100.0);
         }
+    }
+
+    /// Flanger with a negative offset.
+    #[test]
+    fn offset() {
+        let preset = read_effect_preset("flanger", "flanger-offset-180-2.1.0.phaseplant").unwrap();
+        let snapin = &preset.lanes[0].snapins[0];
+        let effect = snapin.effect.as_flanger().unwrap();
+        assert_relative_eq!(effect.offset.get::<percent>(), -50.0, epsilon = 0.001);
     }
 
     #[test]

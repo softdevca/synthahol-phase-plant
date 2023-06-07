@@ -2,9 +2,10 @@
 
 use std::fmt::{Display, Formatter};
 
-use strum_macros::Display;
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
+
+use crate::modulator::ModulatorId;
 
 use super::*;
 
@@ -18,12 +19,20 @@ type CategoryId = u16;
 type ModuleId = u16;
 type ParameterId = u16;
 
-type LaneId = u8;
-
-#[derive(Clone, Copy, Debug, Display, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum RateMode {
     Audio,
     Control,
+}
+
+impl Display for RateMode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let msg = match self {
+            RateMode::Audio => "audio",
+            RateMode::Control => "control",
+        };
+        f.write_str(msg)
+    }
 }
 
 impl RateMode {
@@ -114,6 +123,8 @@ pub enum ModulationSource {
         parameter_id: ParameterId,
     },
     MacroControl(u8),
+    ModWheel,
+    Modulator(ModulatorId),
     Unknown {
         category_id: CategoryId,
         source_id: SourceId,
@@ -141,16 +152,16 @@ impl Display for ModulationSource {
             AudioRate {
                 module_id,
                 parameter_id,
-            } => format!("Audio rate module {module_id} parameter {parameter_id}"),
+            } => format!("audio rate module {module_id} parameter {parameter_id}"),
             // Generator { id, target } => format!(
             //     "Generator {:0x} {}",
             //     id + 1,
             //     target.to_string().to_ascii_lowercase()
             // ),
-            MacroControl(id) => format!("Macro {}", id + 1),
-            // ModulatorDepth(id) => format!("Modulator {} depth", id + 1),
-            // Modulator { modulator_id, parameter_id } => format!("Modulator {}, parameter {}", modulator_id + 1, parameter_id + 1),
-            // ModWheel => "Mod Wheel".to_owned(),
+            MacroControl(id) => format!("macro {}", id + 1),
+            // ModulatorDepth(id) => format!(mModulator {} depth", id + 1),
+            Modulator(modulator_id) => format!("modulator {}", modulator_id + 1),
+            ModWheel => "mod wheel".to_owned(),
             // Snapin { position, target_id } => format!("Snapin {position}, target {target_id}"),
             Unknown {
                 category_id,
@@ -183,6 +194,7 @@ impl ModulationSource {
     pub fn id(&self) -> u32 {
         use ModulationSource::*;
 
+        // Unknown sources include the full category and source ID.
         if let Unknown {
             category_id,
             source_id,
@@ -192,13 +204,22 @@ impl ModulationSource {
             return ((*source_id as u32) << 16) | (*category_id as u32);
         }
 
-        let source_id = match self {
-            AudioRate {
-                module_id,
-                parameter_id,
-            } => RateMode::Audio.add_id(module_id << 4 | *parameter_id),
-            MacroControl(id) => RateMode::Control.add_id(*id as u16),
-            Unknown { .. } => unreachable!(),
+        // Audio rate and control rate sources are split.
+        let source_id = if let AudioRate {
+            module_id,
+            parameter_id,
+        } = self
+        {
+            RateMode::Audio.add_id(module_id << 4 | parameter_id)
+        } else {
+            let source_id = match self {
+                AudioRate { .. } => unreachable!(),
+                ModWheel => 40,
+                MacroControl(id) => *id as SourceId,
+                Modulator(modulator_id) => *modulator_id as SourceId + 8,
+                Unknown { .. } => unreachable!(),
+            };
+            RateMode::Control.add_id(source_id)
         };
         (source_id as u32) << 16 | ModulationSource::LOCAL_CATEGORY_ID as u32
     }
@@ -227,12 +248,12 @@ impl From<u32> for ModulationSource {
                 }
                 RateMode::Control => match part_id {
                     0..=7 => MacroControl(part_id as u8),
+                    8..=39 => Modulator(part_id as u8 - 8),
+                    40 => ModWheel,
                     _ => Unknown {
                         category_id,
                         source_id,
-                        reason: Some(format!(
-                            "Control rate source {part_id:#x} is not recognized"
-                        )),
+                        reason: Some(format!("Control rate source {part_id} is not recognized")),
                     },
                 },
             }
@@ -240,7 +261,7 @@ impl From<u32> for ModulationSource {
             Unknown {
                 category_id,
                 source_id,
-                reason: Some(format!("Unknown category {category_id:#x}")),
+                reason: Some(format!("Unknown category {category_id}")),
             }
         }
     }
@@ -288,38 +309,28 @@ impl Display for ModulationTarget {
         use ModulationTarget::*;
         let msg = match self {
             Host {
-                parameter: target,
+                parameter,
                 rate_mode,
             } => {
-                format!(
-                    "Host {} target {target}",
-                    rate_mode.to_string().to_lowercase()
-                )
+                format!("host {rate_mode} parameter {parameter}")
                 // Lane { lane_id, parameter } => format!("Lane {} {}", lane_id + 1, parameter.to_string().to_lowercase()),
             }
             Modulation {
-                parameter_id: target_id,
+                parameter_id,
                 rate_mode,
-            } => format!(
-                "Modulation {} target {target_id:#x}",
-                rate_mode.to_string().to_lowercase()
-            ),
+            } => format!("modulation {rate_mode} parameter {parameter_id:#x}"),
             Snapin {
                 snapin_id,
-                parameter_id: target_id,
+                parameter_id,
                 rate_mode,
-            } => format!(
-                "Snapin {snapin_id:#x} {} target {target_id:#x}",
-                rate_mode.to_string().to_lowercase()
-            ),
+            } => format!("snapin {snapin_id:#x} {rate_mode} parameter {parameter_id:#x}"),
             Unknown {
-                category_id: module_id,
-                parameter_id: target_id,
+                category_id,
+                parameter_id,
                 rate_mode,
-            } => format!(
-                "Unknown module {module_id:#x} {} target {target_id:#x}",
-                rate_mode.to_string().to_lowercase()
-            ),
+            } => {
+                format!("unknown category {category_id:#x} {rate_mode} parameter {parameter_id:#x}")
+            }
         };
         f.write_str(&msg)
     }
@@ -388,6 +399,8 @@ impl From<u32> for ModulationTarget {
                 }
 
                 // Individual parameters
+                1338 => GlideTime,
+                5119 => MasterGain,
                 9711 => UnisonBias,
                 3006 => UnisonBlend,
                 3004 => UnisonDetune,
@@ -434,10 +447,12 @@ pub enum AudioRateTargetParameter {
     Harmonic,
 }
 
-#[derive(Clone, Debug, Display, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum HostParameter {
+    GlideTime,
     LaneGain(LaneId),
     LaneMix(LaneId),
+    MasterGain,
     UnisonBias,
     UnisonBlend,
     UnisonDetune,
@@ -452,12 +467,14 @@ impl HostParameter {
     fn id(&self) -> TargetId {
         use HostParameter::*;
         match self {
+            GlideTime => 1338,
             LaneGain(lane_id) => {
                 ModulationTarget::LANE_START + (*lane_id as u16 * ModulationTarget::LANE_SIZE) + 1
             }
             LaneMix(lane_id) => {
                 ModulationTarget::LANE_START + (*lane_id as u16 * ModulationTarget::LANE_SIZE)
             }
+            MasterGain => 5119,
             UnisonBias => 9711,
             UnisonBlend => 3006,
             UnisonDetune => 3004,
@@ -470,6 +487,34 @@ impl HostParameter {
     }
 }
 
+impl Display for HostParameter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        use HostParameter::*;
+        let msg = match self {
+            GlideTime => "glide time".to_owned(),
+            LaneGain(lane_id) => format!("lane {} gain", lane_id + 1),
+            LaneMix(lane_id) => format!("lane {} mix", lane_id + 1),
+            MasterGain => "master gain".to_owned(),
+            UnisonBias => "unison bias".to_owned(),
+            UnisonBlend => "unison blend".to_owned(),
+            UnisonDetune => "unison detune".to_owned(),
+            UnisonSpread => "unison spread".to_owned(),
+            Unknown {
+                target_id: _,
+                reason,
+            } => {
+                let msg = "unknown";
+                if let Some(reason) = reason {
+                    format!("{msg} ({reason})")
+                } else {
+                    msg.to_string()
+                }
+            }
+        };
+        f.write_str(&msg)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use approx::assert_relative_eq;
@@ -477,13 +522,64 @@ mod test {
     use uom::si::f32::Ratio;
     use uom::si::ratio::{percent, ratio};
 
-    use crate::modulation::HostParameter::{LaneGain, LaneMix};
+    use crate::modulation::HostParameter::{
+        GlideTime, LaneGain, LaneMix, MasterGain, UnisonBias, UnisonBlend, UnisonDetune,
+        UnisonSpread,
+    };
     use crate::modulation::{HostParameter, ModulationSource, ModulationTarget, RateMode};
     use crate::modulator::ModulatorId;
     use crate::test::read_preset;
 
-    /// Macro 1 goes to Lane 1 gain and mix, Macro 2 to Lane 2, Macro 3 to
-    /// Lane 3.
+    /// The preset has 32 random modulators where there is a modulation from
+    /// each to the global detune.
+    #[test]
+    fn detune() {
+        let preset = read_preset(
+            "modulation",
+            "modulators-32_random_to_detune-2.1.0.phaseplant",
+        );
+        assert_eq!(preset.modulations.len(), 32);
+        for (id, modulation) in preset.modulations.into_iter().enumerate() {
+            assert!(modulation.enabled);
+            assert_eq!(
+                modulation.source,
+                ModulationSource::Modulator(id as ModulatorId)
+            );
+            assert_eq!(
+                modulation.target,
+                ModulationTarget::Host {
+                    parameter: UnisonDetune,
+                    rate_mode: RateMode::Control
+                }
+            );
+        }
+    }
+
+    /// Mod wheel to glide time
+    #[test]
+    fn glide_time() {
+        let preset = read_preset("modulation", "mod_wheel-glide_time-65-1.8.25.phaseplant");
+        assert_eq!(1, preset.modulations.len());
+        assert_relative_eq!(preset.mod_wheel_value.get::<percent>(), 1.6);
+        let modulation = &preset.modulations.get(0).unwrap();
+        assert!(modulation.enabled);
+        assert_eq!(modulation.curve, Ratio::zero());
+        assert_relative_eq!(
+            modulation.amount.get::<percent>(),
+            64.7999,
+            epsilon = 0.0001
+        );
+        assert_eq!(modulation.source, ModulationSource::ModWheel);
+        assert_eq!(
+            modulation.target,
+            ModulationTarget::Host {
+                parameter: GlideTime,
+                rate_mode: RateMode::Control,
+            }
+        );
+    }
+
+    /// Macro 1 goes to Lane 1 gain and mix, Macro 2 to Lane 2, Macro 3 to Lane 3.
     #[test]
     fn lane_gain_and_mix() {
         let preset = read_preset(
@@ -512,6 +608,22 @@ mod test {
                 }
             );
         }
+    }
+
+    /// Mod wheel to master gain
+    #[test]
+    fn master_gain() {
+        let preset = read_preset("modulation", "mod_wheel-master_gain-100-1.8.25.phaseplant");
+        let modulation = &preset.modulations.get(0).unwrap();
+        assert_relative_eq!(modulation.amount.get::<percent>(), 100.0);
+        assert_eq!(modulation.source, ModulationSource::ModWheel);
+        assert_eq!(
+            modulation.target,
+            ModulationTarget::Host {
+                parameter: MasterGain,
+                rate_mode: RateMode::Control,
+            }
+        );
     }
 
     #[test]
@@ -600,7 +712,7 @@ mod test {
         assert_eq!(
             modulation.target,
             ModulationTarget::Host {
-                parameter: HostParameter::UnisonDetune,
+                parameter: UnisonDetune,
                 rate_mode: RateMode::Control,
             }
         );
@@ -610,7 +722,7 @@ mod test {
         assert_eq!(
             modulation.target,
             ModulationTarget::Host {
-                parameter: HostParameter::UnisonSpread,
+                parameter: UnisonSpread,
                 rate_mode: RateMode::Control,
             }
         );
@@ -624,7 +736,7 @@ mod test {
         assert_eq!(
             modulation.target,
             ModulationTarget::Host {
-                parameter: HostParameter::UnisonBias,
+                parameter: UnisonBias,
                 rate_mode: RateMode::Control,
             }
         );
@@ -634,7 +746,7 @@ mod test {
         assert_eq!(
             modulation.target,
             ModulationTarget::Host {
-                parameter: HostParameter::UnisonBlend,
+                parameter: UnisonBlend,
                 rate_mode: RateMode::Control,
             }
         );
@@ -657,77 +769,77 @@ mod test {
 
         // First envelope
         assert_eq!(
-            preset.modulations[0].destination,
+            preset.modulations[0].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Attack,
             }
         );
         assert_eq!(
-            preset.modulations[1].destination,
+            preset.modulations[1].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::AttackCurve,
             }
         );
         assert_eq!(
-            preset.modulations[2].destination,
+            preset.modulations[2].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Decay,
             }
         );
         assert_eq!(
-            preset.modulations[3].destination,
+            preset.modulations[3].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::DecayFalloff,
             }
         );
         assert_eq!(
-            preset.modulations[4].destination,
+            preset.modulations[4].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Sustain,
             }
         );
         assert_eq!(
-            preset.modulations[5].destination,
+            preset.modulations[5].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Release,
             }
         );
         assert_eq!(
-            preset.modulations[6].destination,
+            preset.modulations[6].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::ReleaseFalloff,
             }
         );
         assert_eq!(
-            preset.modulations[7].destination,
+            preset.modulations[7].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Delay,
             }
         );
         assert_eq!(
-            preset.modulations[8].destination,
+            preset.modulations[8].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Hold,
             }
         );
         assert_eq!(
-            preset.modulations[9].destination,
+            preset.modulations[9].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::OutputGain,
             }
         );
         assert_eq!(
-            preset.modulations[10].destination,
+            preset.modulations[10].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Pan,
@@ -736,14 +848,14 @@ mod test {
 
         // Second envelope only has attack and gain.
         assert!(matches!(
-            preset.modulations[11].destination,
+            preset.modulations[11].target,
             ModulationTarget::Generator {
                 generator_id: 2,
                 target: GeneratorTarget::Attack
             }
         ));
         assert!(matches!(
-            preset.modulations[12].destination,
+            preset.modulations[12].target,
             ModulationTarget::Generator {
                 generator_id: 2,
                 target: GeneratorTarget::OutputGain
@@ -766,36 +878,13 @@ mod test {
         let modulation = &preset.modulations[0];
         assert_eq!(modulation.amount.get::<percent>(), 0.0);
         assert_eq!(
-            modulation.destination,
+            modulation.target,
             ModulationTarget::Modulator {
                 modulator_id: 0,
                 parameter_id: 0,
             }
         );
         // FIXME: CHECK OTHERS
-    }
-
-    #[test]
-    fn mod_wheel_version_1() {
-        let preset = read_preset("modulation", "mod_wheel-glide_time-65-1.8.25.phaseplant");
-        assert_eq!(1, preset.modulations.len());
-        assert_relative_eq!(preset.mod_wheel_value.get::<percent>(), 1.6);
-        let modulation = &preset.modulations.get(0).unwrap();
-        assert!(modulation.enabled);
-        assert_eq!(modulation.curve, Ratio::zero());
-        assert_relative_eq!(
-            modulation.amount.get::<percent>(),
-            64.7999,
-            epsilon = 0.0001
-        );
-        assert_eq!(modulation.source, ModulationSource::ModWheel);
-        assert_eq!(modulation.destination, ModulationTarget::GlideTime);
-
-        let preset = read_preset("modulation", "mod_wheel-master_gain-100-1.8.25.phaseplant");
-        let modulation = &preset.modulations.get(0).unwrap();
-        assert_relative_eq!(modulation.amount.get::<percent>(), 100.0);
-        assert_eq!(modulation.source, ModulationSource::ModWheel);
-        assert_eq!(modulation.destination, ModulationTarget::MasterGain);
     }
 
     #[test]
@@ -807,7 +896,7 @@ mod test {
             assert_relative_eq!(modulation.amount.get::<percent>(), 0.0);
             assert_eq!(modulation.source, ModulationSource::ModWheel);
             assert_eq!(
-                modulation.destination,
+                modulation.target,
                 ModulationTarget::MacroControl(modulation_index as u8)
             );
         }
@@ -819,7 +908,7 @@ mod test {
         assert_eq!(modulation.curve, Ratio::zero());
         assert_relative_eq!(modulation.amount.get::<percent>(), 50.0);
         assert_eq!(modulation.source, ModulationSource::ModWheel);
-        assert_eq!(modulation.destination, ModulationTarget::MacroControl(0));
+        assert_eq!(modulation.target, ModulationTarget::MacroControl(0));
 
         let preset = read_preset("modulation", "mod_wheel-macro2--32-1.8.25.phaseplant");
         assert_relative_eq!(preset.mod_wheel_value.get::<percent>(), 1.6);
@@ -842,7 +931,7 @@ mod test {
         assert_eq!(modulation.curve, Ratio::zero());
         assert_relative_eq!(modulation.amount.get::<percent>(), 50.0);
         assert_eq!(modulation.source, ModulationSource::ModWheel);
-        assert_eq!(modulation.destination, ModulationTarget::MacroControl(0));
+        assert_eq!(modulation.target, ModulationTarget::MacroControl(0));
     }
 
     /// Modulator that modulates a modulation.
@@ -858,7 +947,7 @@ mod test {
             ModulationSource::ModulatorDepth(0)
         ));
         // FIXME: DEST
-        // assert!(matches!(random_to_analog.destination, ModulationDest::Generator { generator_id: 0, parameter_id: 0 }));
+        // assert!(matches!(random_to_analog.target, ModulationDest::Generator { generator_id: 0, parameter_id: 0 }));
 
         let random_to_modulation = &preset.modulations[1];
         assert!(random_to_modulation.enabled);
@@ -867,7 +956,7 @@ mod test {
             ModulationSource::ModulatorDepth(1)
         ));
         // FIXME: OTHER MODULATOR
-        // assert!(matches!(modulation.destination, ModulationDest::Generator { generator_id: 0, parameter_id: 0 }));
+        // assert!(matches!(modulation.target, ModulationDest::Generator { generator_id: 0, parameter_id: 0 }));
     }
 
     #[test]
@@ -879,49 +968,49 @@ mod test {
         }
 
         assert_eq!(
-            preset.modulations[0].destination,
+            preset.modulations[0].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Sync,
             }
         );
         assert_eq!(
-            preset.modulations[1].destination,
+            preset.modulations[1].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::PulseWidth,
             }
         );
         assert_eq!(
-            preset.modulations[2].destination,
+            preset.modulations[2].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Level,
             }
         );
         assert_eq!(
-            preset.modulations[3].destination,
+            preset.modulations[3].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Pitch,
             }
         );
         assert_eq!(
-            preset.modulations[4].destination,
+            preset.modulations[4].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Harmonic,
             }
         );
         assert_eq!(
-            preset.modulations[5].destination,
+            preset.modulations[5].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Frequency,
             }
         );
         assert_eq!(
-            preset.modulations[6].destination,
+            preset.modulations[6].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::PhaseOffset,
@@ -939,18 +1028,18 @@ mod test {
 
         // First generator
         assert_eq!(
-            preset.modulations[0].destination,
+            preset.modulations[0].target,
             ModulationTarget::CurveOutputRate(1),
         );
         assert_eq!(
-            preset.modulations[1].destination,
+            preset.modulations[1].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::OutputGain,
             }
         );
         assert_eq!(
-            preset.modulations[2].destination,
+            preset.modulations[2].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Pan,
@@ -959,18 +1048,18 @@ mod test {
 
         // Second generator
         assert_eq!(
-            preset.modulations[3].destination,
+            preset.modulations[3].target,
             ModulationTarget::CurveOutputRate(2),
         );
         assert_eq!(
-            preset.modulations[4].destination,
+            preset.modulations[4].target,
             ModulationTarget::Generator {
                 generator_id: 2,
                 target: GeneratorTarget::OutputGain,
             }
         );
         assert_eq!(
-            preset.modulations[5].destination,
+            preset.modulations[5].target,
             ModulationTarget::Generator {
                 generator_id: 2,
                 target: GeneratorTarget::Pan,
@@ -988,22 +1077,22 @@ mod test {
 
         // First generator
         assert_eq!(
-            preset.modulations[0].destination,
+            preset.modulations[0].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Drive,
             }
         );
         assert_eq!(
-            preset.modulations[1].destination,
+            preset.modulations[1].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Bias,
             }
         );
-        assert_eq!(preset.modulations[2].destination, DistortionEffectSpread(1),);
+        assert_eq!(preset.modulations[2].target, DistortionEffectSpread(1),);
         assert_eq!(
-            preset.modulations[3].destination,
+            preset.modulations[3].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Mix,
@@ -1012,22 +1101,22 @@ mod test {
 
         // Second generator
         assert_eq!(
-            preset.modulations[4].destination,
+            preset.modulations[4].target,
             ModulationTarget::Generator {
                 generator_id: 2,
                 target: GeneratorTarget::Drive,
             }
         );
         assert_eq!(
-            preset.modulations[5].destination,
+            preset.modulations[5].target,
             ModulationTarget::Generator {
                 generator_id: 2,
                 target: GeneratorTarget::Bias,
             }
         );
-        assert_eq!(preset.modulations[6].destination, DistortionEffectSpread(2));
+        assert_eq!(preset.modulations[6].target, DistortionEffectSpread(2));
         assert_eq!(
-            preset.modulations[7].destination,
+            preset.modulations[7].target,
             ModulationTarget::Generator {
                 generator_id: 2,
                 target: GeneratorTarget::Mix,
@@ -1036,25 +1125,22 @@ mod test {
 
         // Third generator
         assert_eq!(
-            preset.modulations[8].destination,
+            preset.modulations[8].target,
             ModulationTarget::Generator {
                 generator_id: 3,
                 target: GeneratorTarget::Drive,
             }
         );
         assert_eq!(
-            preset.modulations[9].destination,
+            preset.modulations[9].target,
             ModulationTarget::Generator {
                 generator_id: 3,
                 target: GeneratorTarget::Bias,
             }
         );
+        assert_eq!(preset.modulations[10].target, DistortionEffectSpread(2));
         assert_eq!(
-            preset.modulations[10].destination,
-            DistortionEffectSpread(2)
-        );
-        assert_eq!(
-            preset.modulations[11].destination,
+            preset.modulations[11].target,
             ModulationTarget::Generator {
                 generator_id: 2,
                 target: GeneratorTarget::Mix,
@@ -1071,77 +1157,77 @@ mod test {
         }
 
         assert_eq!(
-            preset.modulations[0].destination,
+            preset.modulations[0].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Attack,
             }
         );
         assert_eq!(
-            preset.modulations[1].destination,
+            preset.modulations[1].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::AttackCurve,
             }
         );
         assert_eq!(
-            preset.modulations[2].destination,
+            preset.modulations[2].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Decay,
             }
         );
         assert_eq!(
-            preset.modulations[3].destination,
+            preset.modulations[3].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::DecayFalloff,
             }
         );
         assert_eq!(
-            preset.modulations[4].destination,
+            preset.modulations[4].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Sustain,
             }
         );
         assert_eq!(
-            preset.modulations[5].destination,
+            preset.modulations[5].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Release,
             }
         );
         assert_eq!(
-            preset.modulations[6].destination,
+            preset.modulations[6].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::ReleaseFalloff,
             }
         );
         assert_eq!(
-            preset.modulations[7].destination,
+            preset.modulations[7].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Delay,
             }
         );
         assert_eq!(
-            preset.modulations[8].destination,
+            preset.modulations[8].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Hold,
             }
         );
         assert_eq!(
-            preset.modulations[9].destination,
+            preset.modulations[9].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::OutputGain,
             }
         );
         assert_eq!(
-            preset.modulations[10].destination,
+            preset.modulations[10].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Pan,
@@ -1158,21 +1244,21 @@ mod test {
         }
 
         assert_eq!(
-            preset.modulations[0].destination,
+            preset.modulations[0].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Cutoff,
             }
         );
         assert_eq!(
-            preset.modulations[1].destination,
+            preset.modulations[1].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Resonance,
             }
         );
         assert_eq!(
-            preset.modulations[2].destination,
+            preset.modulations[2].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Gain,
@@ -1187,98 +1273,98 @@ mod test {
         for generator_id in (1 as GeneratorId)..=3 {
             let modulation_offset = ((generator_id - 1) * 13) as usize;
             assert_eq!(
-                preset.modulations[modulation_offset + 0].destination,
+                preset.modulations[modulation_offset + 0].target,
                 ModulationTarget::Granular {
                     generator_id,
                     target: GranularTarget::Position,
                 }
             );
             assert_eq!(
-                preset.modulations[modulation_offset + 1].destination,
+                preset.modulations[modulation_offset + 1].target,
                 ModulationTarget::Granular {
                     generator_id,
                     target: GranularTarget::GrainLength,
                 }
             );
             assert_eq!(
-                preset.modulations[modulation_offset + 2].destination,
+                preset.modulations[modulation_offset + 2].target,
                 ModulationTarget::Granular {
                     generator_id,
                     target: GranularTarget::AttackCurve,
                 }
             );
             assert_eq!(
-                preset.modulations[modulation_offset + 3].destination,
+                preset.modulations[modulation_offset + 3].target,
                 ModulationTarget::Granular {
                     generator_id,
                     target: GranularTarget::AttackTime,
                 }
             );
             assert_eq!(
-                preset.modulations[modulation_offset + 4].destination,
+                preset.modulations[modulation_offset + 4].target,
                 ModulationTarget::Granular {
                     generator_id,
                     target: GranularTarget::DecayTime,
                 }
             );
             assert_eq!(
-                preset.modulations[modulation_offset + 5].destination,
+                preset.modulations[modulation_offset + 5].target,
                 ModulationTarget::Granular {
                     generator_id,
                     target: GranularTarget::DecayCurve,
                 }
             );
             assert_eq!(
-                preset.modulations[modulation_offset + 6].destination,
+                preset.modulations[modulation_offset + 6].target,
                 ModulationTarget::Granular {
                     generator_id,
                     target: GranularTarget::Grains,
                 }
             );
             assert_eq!(
-                preset.modulations[modulation_offset + 7].destination,
+                preset.modulations[modulation_offset + 7].target,
                 ModulationTarget::Granular {
                     generator_id,
                     target: GranularTarget::RandomPosition,
                 }
             );
             assert_eq!(
-                preset.modulations[modulation_offset + 8].destination,
+                preset.modulations[modulation_offset + 8].target,
                 ModulationTarget::Granular {
                     generator_id,
                     target: GranularTarget::RandomTiming,
                 }
             );
             assert_eq!(
-                preset.modulations[modulation_offset + 9].destination,
+                preset.modulations[modulation_offset + 9].target,
                 ModulationTarget::Granular {
                     generator_id,
                     target: GranularTarget::RandomPitch,
                 }
             );
             assert_eq!(
-                preset.modulations[modulation_offset + 10].destination,
+                preset.modulations[modulation_offset + 10].target,
                 ModulationTarget::Granular {
                     generator_id,
                     target: GranularTarget::RandomLevel,
                 }
             );
             assert_eq!(
-                preset.modulations[modulation_offset + 11].destination,
+                preset.modulations[modulation_offset + 11].target,
                 ModulationTarget::Granular {
                     generator_id,
                     target: GranularTarget::RandomPan,
                 }
             );
             assert_eq!(
-                preset.modulations[modulation_offset + 12].destination,
+                preset.modulations[modulation_offset + 12].target,
                 ModulationTarget::Granular {
                     generator_id,
                     target: GranularTarget::RandomReverse,
                 }
             );
             assert_eq!(
-                preset.modulations[modulation_offset + 13].destination,
+                preset.modulations[modulation_offset + 13].target,
                 ModulationTarget::Granular {
                     generator_id: 1,
                     target: GranularTarget::Level,
@@ -1296,7 +1382,7 @@ mod test {
         }
 
         assert_eq!(
-            preset.modulations[0].destination,
+            preset.modulations[0].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::RoutingLevel,
@@ -1313,49 +1399,49 @@ mod test {
         }
 
         assert_eq!(
-            preset.modulations[0].destination,
+            preset.modulations[0].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Slope,
             }
         );
         assert_eq!(
-            preset.modulations[1].destination,
+            preset.modulations[1].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Stereo,
             }
         );
         assert_eq!(
-            preset.modulations[2].destination,
+            preset.modulations[2].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Level,
             }
         );
         assert_eq!(
-            preset.modulations[3].destination,
+            preset.modulations[3].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Pitch,
             }
         );
         assert_eq!(
-            preset.modulations[4].destination,
+            preset.modulations[4].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Harmonic,
             }
         );
         assert_eq!(
-            preset.modulations[5].destination,
+            preset.modulations[5].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Frequency,
             }
         );
         assert_eq!(
-            preset.modulations[6].destination,
+            preset.modulations[6].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::PhaseOffset,
@@ -1372,42 +1458,42 @@ mod test {
         }
 
         assert_eq!(
-            preset.modulations[0].destination,
+            preset.modulations[0].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::StartPos,
             }
         );
         assert_eq!(
-            preset.modulations[1].destination,
+            preset.modulations[1].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Level,
             }
         );
         assert_eq!(
-            preset.modulations[2].destination,
+            preset.modulations[2].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Pitch,
             }
         );
         assert_eq!(
-            preset.modulations[3].destination,
+            preset.modulations[3].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Harmonic,
             }
         );
         assert_eq!(
-            preset.modulations[4].destination,
+            preset.modulations[4].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Frequency,
             }
         );
         assert_eq!(
-            preset.modulations[5].destination,
+            preset.modulations[5].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::PhaseOffset,
@@ -1427,49 +1513,49 @@ mod test {
         }
 
         assert_eq!(
-            preset.modulations[0].destination,
+            preset.modulations[0].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Frame,
             }
         );
         assert_eq!(
-            preset.modulations[1].destination,
+            preset.modulations[1].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Bandlimit,
             }
         );
         assert_eq!(
-            preset.modulations[2].destination,
+            preset.modulations[2].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Level,
             }
         );
         assert_eq!(
-            preset.modulations[3].destination,
+            preset.modulations[3].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Pitch,
             }
         );
         assert_eq!(
-            preset.modulations[4].destination,
+            preset.modulations[4].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Harmonic,
             }
         );
         assert_eq!(
-            preset.modulations[5].destination,
+            preset.modulations[5].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::Frequency,
             }
         );
         assert_eq!(
-            preset.modulations[6].destination,
+            preset.modulations[6].target,
             ModulationTarget::Generator {
                 generator_id: 1,
                 target: GeneratorTarget::PhaseOffset,
@@ -1488,7 +1574,7 @@ mod test {
         for modulation in preset.modulations {
             assert_eq!(modulation.source, ModulationSource::ModulatorDepth(0));
             assert!(matches!(
-                modulation.destination,
+                modulation.target,
                 ModulationTarget::Generator {
                     generator_id: _,
                     target: GeneratorTarget::Level
@@ -1505,7 +1591,7 @@ mod test {
         for modulation in preset.modulations {
             assert_eq!(modulation.source, ModulationSource::ModulatorDepth(0));
             assert!(matches!(
-                modulation.destination,
+                modulation.target,
                 ModulationTarget::Generator {
                     generator_id: _,
                     target: GeneratorTarget::Level
@@ -1557,31 +1643,12 @@ mod test {
 
         for index in 0..5 {
             assert_eq!(
-                preset.modulations[0].destination,
+                preset.modulations[0].target,
                 ModulationTarget::Granular {
                     generator_id: index + 1,
                     target: GranularTarget::Grains,
                 }
             );
-        }
-    }
-
-    /// The preset has 32 random modulators where there is a modulation from
-    /// each to the global detune.
-    #[test]
-    fn thirty_two_modulators_to_detune() {
-        let preset = read_preset(
-            "modulation",
-            "modulators-32_random_to_detune-2.1.0.phaseplant",
-        );
-        assert_eq!(preset.modulations.len(), 32);
-        for (id, modulation) in preset.modulations.into_iter().enumerate() {
-            assert!(modulation.enabled);
-            assert_eq!(
-                modulation.source,
-                ModulationSource::ModulatorDepth(id as ModulatorId)
-            );
-            assert_eq!(modulation.destination, ModulationTarget::Detune);
         }
     }
 }

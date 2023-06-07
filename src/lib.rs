@@ -43,8 +43,6 @@ mod text;
 mod unison;
 mod version;
 
-pub const LANE_COUNT: usize = 3;
-
 /// Number of generators. Unused generators in the file are ignored.
 const GENERATORS_MAX: GeneratorId = 32;
 
@@ -156,6 +154,8 @@ impl Display for LaneDestination {
     }
 }
 
+pub type LaneId = u8;
+
 #[derive(Debug, PartialEq)]
 pub struct Lane {
     pub enabled: bool,
@@ -175,7 +175,7 @@ pub struct Lane {
 }
 
 impl Lane {
-    pub const COUNT: u8 = 3;
+    pub const COUNT: usize = 3;
 
     /// Find the first snapin that has an effect with the given type.
     pub fn find_effect<T: Effect>(&self) -> Option<(&Snapin, &T)> {

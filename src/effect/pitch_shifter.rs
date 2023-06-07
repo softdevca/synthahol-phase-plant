@@ -3,6 +3,7 @@
 //!
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
+//! | 1.6.9               | 1038           |
 //! | 1.8.5 to 1.8.13     | 1039           |
 //! | 2.0.16              | 1050           |
 
@@ -34,7 +35,7 @@ impl CompensationMode {
         Self::from_repr(id).ok_or_else(|| {
             Error::new(
                 ErrorKind::InvalidData,
-                format!("Unknown compenstation mode {id}"),
+                format!("Unknown compensation mode {id}"),
             )
         })
     }
@@ -98,7 +99,7 @@ impl EffectRead for PitchShifter {
         reader: &mut PhasePlantReader<R>,
         effect_version: u32,
     ) -> io::Result<EffectReadReturn> {
-        if effect_version < 1039 {
+        if effect_version < 1038 {
             return Err(Error::new(
                 ErrorKind::InvalidData,
                 format!(

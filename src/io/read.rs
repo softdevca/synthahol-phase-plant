@@ -429,8 +429,8 @@ impl Preset {
         // Lanes
         //
 
-        let mut lanes = Vec::with_capacity(LANE_COUNT);
-        for lane_index in 0..LANE_COUNT {
+        let mut lanes = Vec::with_capacity(Lane::COUNT);
+        for lane_index in 0..Lane::COUNT {
             trace!("lane {}: pos {}", lane_index, reader.pos());
             let enabled = reader.read_bool32()?;
             let gain = reader.read_f32()?;
@@ -579,7 +579,7 @@ impl Preset {
             }
         }
 
-        if !reader.is_release_at_least(PhasePlantRelease::V1_7_0) {
+        if !reader.is_release_at_least(PhasePlantRelease::V1_6_10) {
             reader.expect_u32(0, "early_version_extra_1")?;
         }
 
@@ -780,7 +780,7 @@ impl Preset {
             lane.solo = reader.read_bool32()?;
 
             // The last lane has less padding
-            if lane_index < LANE_COUNT - 1 {
+            if lane_index < Lane::COUNT - 1 {
                 reader.expect_u8(0, "lane_unknown_3")?;
                 reader.expect_u8(0, "lane_unknown_4")?;
             }
@@ -1121,7 +1121,7 @@ impl Preset {
                 let host_version =
                     Version::new(version_major, version_minor, version_patch, version_extra);
                 trace!(
-                    "lane: effect mode '{effect_mode}', host version {host_version}, position pos {}",
+                    "lane: effect mode '{effect_mode}', host version {host_version}, position {}",
                     reader.pos()
                 );
 
@@ -1138,59 +1138,56 @@ impl Preset {
 
                 let effect_length = reader.read_u32()?;
                 let effect_start_pos = reader.stream_position()?;
-                let slot_format_major = reader.read_u32()?;
-                debug!("lane snapin: slot format {slot_format_major}, host version {host_version}, effect length {effect_length}, start location {effect_start_pos}");
-                let effect_version;
-                let effect_read_return = if effect_mode.is_host() {
-                    if slot_format_major == 1 {
-                        let _header_length = reader.read_u32()?;
-                        let _format_major = reader.read_u32()?;
-                    }
 
-                    effect_version = reader.read_u32()?;
+                let slot_format_major = reader.read_u32()?;
+                if slot_format_major == 1 {
+                    let _header_length = reader.read_u32()?;
+                    let _format_major = reader.read_u32()?;
+                }
+
+                let effect_version = reader.read_u32()?;
+                debug!("lane snapin: slot format {slot_format_major}, host version {host_version}, effect length {effect_length}, start location {effect_start_pos}, is host {}", effect_mode.is_host());
+
+                let effect_read_return = if effect_mode.is_host() {
                     let format_version_major = reader.read_u32()?;
-                    trace!("lane snapin: snapin host version {effect_version}, format version major {format_version_major}");
+                    trace!("lane snapin: host format version {format_version_major}");
+
                     let metadata = reader.read_metadata()?;
 
-                    let mut effect_read_return;
-                    effect_read_return = effect_mode.read_effect(&mut reader, effect_version)?;
+                    let mut effect_read_return =
+                        effect_mode.read_effect(&mut reader, effect_version)?;
 
                     let effect_remaining = effect_length as i64
                         - (reader.stream_position()? - effect_start_pos) as i64;
                     if effect_remaining != 0 {
-                        let msg = format!("Snapin host {} version {effect_version} had {effect_remaining} bytes remaining", effect_mode.name());
+                        let msg = format!("Snapin host {effect_mode} version {effect_version} had {effect_remaining} bytes remaining");
                         return Err(Error::new(ErrorKind::InvalidData, msg));
                     }
                     effect_read_return.metadata = metadata;
                     effect_read_return
                 } else {
-                    if slot_format_major == 1 {
-                        // FIXME: IF this is never hit then move effect_version up level.
-                        panic!("Slot format major 1 not supported for non-host effects");
-                    }
-                    effect_version = reader.read_u32()?;
-                    trace!("lane snapin: effect version {effect_version}, host version {host_version}, slot format {slot_format_major}");
-
                     let preset_name = if reader.read_bool32()? {
                         reader.read_string_and_length()?
                     } else {
                         None
                     };
+                    trace!("lane snapin: preset name {preset_name:?}");
 
                     let mut preset_path = Vec::new();
-                    if slot_format_major == 5 {
-                        preset_path.push(reader.read_string_and_length()?.unwrap_or_default());
-                    } else {
+                    let mut preset_edited = false;
+                    if slot_format_major > 5 {
                         preset_path = reader.read_path()?;
+                        let _unknown = reader.read_bool8()?;
+                        preset_edited = reader.read_bool32()?;
+                        trace!("lane snapin: preset path {preset_path:?}, preset edited {preset_edited}");
+                    } else {
+                        let _unknown = reader.read_bool8()?;
+                        reader.expect_u32(0, "lane_snapin_effect_unknown_1")?;
                     }
 
-                    if host_version.is_zero()
-                        || host_version.is_at_least(&PhasePlantRelease::V1_7_0.version())
-                    {
-                        reader.skip(1)?;
-                    }
-
-                    let preset_edited = slot_format_major > 5 && reader.read_bool32()?;
+                    // if effect_mode == EffectMode::Chorus && !host_version.is_at_least(&PhasePlantRelease::V1_7_0.version()) {
+                    //     reader.skip(1)?;
+                    // }
 
                     let mut effect_read_return =
                         effect_mode.read_effect(&mut reader, effect_version)?;
@@ -1326,7 +1323,7 @@ impl Preset {
                 let data_pos = reader.stream_position()?;
                 let data_header = reader.read_block_header()?;
                 if data_header.is_used {
-                    mod_block.read_data_block(&mut reader)?;
+                    mod_block.read_data_block(&mut reader, &data_header)?;
                 }
 
                 let remaining = -(reader.stream_position()? as i64
@@ -1443,6 +1440,7 @@ impl Preset {
             for mod_block in &mut mod_blocks {
                 let header = reader.read_block_header()?;
                 if header.is_used {
+                    let block_start = reader.stream_position()?;
                     mod_block.lfo_table_wavetable_path = reader.read_string_and_length()?;
 
                     let has_contents = reader.read_bool8()?;
@@ -1452,6 +1450,14 @@ impl Preset {
                         reader.read_exact(&mut contents)?;
                         mod_block.lfo_table_wavetable_contents = contents;
                     }
+
+                    // The factory preset Tutorials/FM1 in Phase Plant 2.1.0
+                    // has an orphaned LFO table data block. It is mark as not
+                    // having contents but it still has a length greater than
+                    // the header.
+                    let remaining = header.data_length as i64
+                        - (reader.stream_position()? as i64 - block_start as i64);
+                    reader.skip(remaining)?;
                 }
             }
 

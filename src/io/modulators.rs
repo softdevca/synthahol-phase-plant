@@ -179,6 +179,7 @@ impl ModulatorBlock {
     pub(crate) fn read_data_block<R: Read + Seek>(
         &mut self,
         reader: &mut PhasePlantReader<R>,
+        header: &DataBlockHeader,
     ) -> io::Result<()> {
         match self.mode {
             ModulatorMode::Curve | ModulatorMode::Lfo | ModulatorMode::Remap => {
@@ -199,6 +200,14 @@ impl ModulatorBlock {
                     });
                 }
             }
+
+            // Some factory presets like Keys/Purple Organ have a data block
+            // for the Blank modulator. It's likely a left over from an issue
+            // with an earlier version of the Phase Plant.
+            ModulatorMode::Blank => {
+                reader.skip(header.data_length as i64)?;
+            }
+
             _ => warn!(
                 "Unhandled {} data block at position {}",
                 self.mode,

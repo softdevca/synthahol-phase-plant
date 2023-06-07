@@ -4,6 +4,7 @@
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
 //! | 1.8.5 to 1.8.14     | 1029           |
+//! | 2.0.0               | 1038           |
 //! | 2.0.16              | 1040           |
 
 use std::any::{type_name, Any};
@@ -111,10 +112,10 @@ impl EffectRead for LadderFilter {
         let enabled = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
 
-        reader.expect_u32(0, "ladder_filter_unknown1")?;
-        reader.expect_u32(0, "ladder_filter_unknown2")?;
-        if effect_version >= 1040 {
-            reader.expect_u32(0, "ladder_filter_unknown3")?;
+        reader.expect_u32(0, "ladder_filter_unknown_1")?;
+        reader.expect_u32(0, "ladder_filter_unknown_2")?;
+        if effect_version >= 1038 {
+            reader.expect_u32(0, "ladder_filter_unknown_3")?;
         }
 
         Ok(EffectReadReturn::new(
@@ -141,17 +142,17 @@ impl EffectWrite for LadderFilter {
     ) -> io::Result<()> {
         writer.write_hertz(self.cutoff)?;
         writer.write_ratio(self.resonance)?;
-        writer.write_f32(self.drive.linear())?;
+        writer.write_decibels_linear(self.drive)?;
         writer.write_ratio(self.bias)?;
         writer.write_bool32(self.diode)?;
         writer.write_bool32(self.saturate)?;
         writer.write_bool32(enabled)?;
         writer.write_bool32(minimized)?;
 
-        writer.write_u32(0)?; // ladder_filter_unknown1
-        writer.write_u32(0)?; // ladder_filter_unknown2
-        if self.write_version() >= 1040 {
-            writer.write_u32(0)?; // ladder_filter_unknown3
+        writer.write_u32(0)?; // ladder_filter_unknown_1
+        writer.write_u32(0)?; // ladder_filter_unknown_2
+        if self.write_version() >= 1038 {
+            writer.write_u32(0)?; // ladder_filter_unknown_3
         }
 
         Ok(())

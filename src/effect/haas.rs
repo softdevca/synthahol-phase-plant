@@ -3,6 +3,7 @@
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
 //! | 1.8.5 to 1.8.14     | 1037           |
+//! | 2.0.0               | 1046           |
 //! | 2.0.16              | 1048           |
 
 use std::any::{type_name, Any};
@@ -69,10 +70,10 @@ impl EffectRead for Haas {
         let delay = reader.read_seconds()?;
         let minimized = reader.read_bool32()?;
 
-        reader.expect_u32(0, "haas_unknown3")?;
-        reader.expect_u32(0, "haas_unknown4")?;
-        if effect_version >= 1048 {
-            reader.expect_u32(0, "haas_unknown5")?;
+        reader.expect_u32(0, "haas_unknown_1")?;
+        reader.expect_u32(0, "haas_unknown_2")?;
+        if effect_version >= 1046 {
+            reader.expect_u32(0, "haas_unknown_3")?;
         }
 
         Ok(EffectReadReturn::new(

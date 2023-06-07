@@ -4,6 +4,7 @@
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
 //! | 1.8.5 to 1.8.13     | 1038           |
+//! | 2.0.0               | 1047           |
 //! | 2.0.12              | 1048           |
 //! | 2.0.16              | 1049           |
 
@@ -104,7 +105,7 @@ impl EffectRead for Bitcrush {
 
         reader.expect_u32(0, "bitcrush_unknown_1")?;
         reader.expect_u32(0, "bitcrush_unknown_2")?;
-        if effect_version >= 1048 {
+        if effect_version >= 1047 {
             reader.expect_u32(0, "bitcrush_unknown_3")?;
         }
 

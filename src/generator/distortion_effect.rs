@@ -128,7 +128,6 @@ mod test {
             assert!(generator.enabled);
             assert_eq!(generator.name(), "Distortion".to_owned());
             assert_eq!(generator.effect.mode, DistortionMode::Overdrive);
-            println!("DB: {:?}", generator.effect.drive.db());
             assert_relative_eq!(generator.effect.drive.db(), 12.04, epsilon = 0.01);
             assert_relative_eq!(generator.effect.bias.get::<percent>(), 0.0);
             assert_relative_eq!(generator.effect.spread.get::<percent>(), 0.0);

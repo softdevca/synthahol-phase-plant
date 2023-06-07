@@ -3,6 +3,7 @@
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
 //! | 1.8.5 to 1.8.14     | 1037           |
+//! | 2.0.0               | 1046           |
 //! | 2.0.12              | 1049           |
 //! | 2.1.16 to 2.1.0     | 1050           |
 
@@ -132,9 +133,12 @@ impl EffectRead for Delay {
         reader.expect_u32(0, "delay_unknown_5")?;
         reader.expect_u32(0, "delay_unknown_6")?;
 
+        if effect_version >= 1046 {
+            reader.expect_u32(0, "delay_unknown_7")?;
+        }
+
         let mut tone = Ratio::zero();
         if effect_version >= 1049 {
-            reader.expect_u32(0, "delay_unknown_7")?;
             tone = reader.read_ratio()?;
         }
 
