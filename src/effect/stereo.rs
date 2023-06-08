@@ -15,6 +15,8 @@ use uom::num::Zero;
 use uom::si::f32::Ratio;
 use uom::si::ratio::{percent, ratio};
 
+use crate::SnapinId;
+
 use super::super::io::*;
 use super::{Effect, EffectMode};
 
@@ -77,14 +79,18 @@ impl EffectRead for Stereo {
 
         reader.expect_u32(0, "stereo_unknown_1")?;
         reader.expect_u32(0, "stereo_unknown_2")?;
-        if effect_version >= 1047 {
-            reader.expect_u32(0, "stereo_unknown_3")?;
-        }
+
+        let group_id = if effect_version >= 1047 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         Ok(EffectReadReturn::new(
             Box::new(Stereo { mid, width, pan }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -95,6 +101,7 @@ impl EffectWrite for Stereo {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
         writer.write_f32(self.width.get::<ratio>())?;
@@ -105,9 +112,11 @@ impl EffectWrite for Stereo {
         writer.write_u32(0)?;
         writer.write_u32(0)?;
         writer.write_u32(0)?;
+
         if self.write_version() >= 1047 {
-            writer.write_u32(0)?;
+            writer.write_snapin_id(group_id)?;
         }
+
         Ok(())
     }
 

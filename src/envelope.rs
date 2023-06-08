@@ -2,10 +2,12 @@ use uom::num::Zero;
 use uom::si::f32::{Ratio, Time};
 use uom::si::time::second;
 
-/// ADSR-style envelope.
+/// ADSR-style
+/// [envelope](https://kilohearts.com/docs/basic_usage#kilohearts_envelopes).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Envelope {
     pub delay: Time,
+
     pub attack: Time,
 
     #[doc(alias = "attack_slope")]

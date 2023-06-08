@@ -16,6 +16,7 @@ use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 
 use crate::effect::SidechainMode;
+use crate::SnapinId;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -82,9 +83,11 @@ impl EffectRead for PhaseDistortion {
 
         reader.expect_u32(0, "phase_distortion_unknown1")?;
         reader.expect_u32(0, "phase_distortion_unknown2")?;
-        if effect_version >= 1034 {
-            reader.expect_u32(0, "phase_distortion_unknown3")?;
-        }
+        let group_id = if effect_version >= 1034 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         let sidechain_id = reader.read_u32()?;
         let sidechain_mode_str = reader.read_string_and_length()?;
@@ -108,6 +111,7 @@ impl EffectRead for PhaseDistortion {
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -118,6 +122,7 @@ impl EffectWrite for PhaseDistortion {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_f32(self.drive)?;
         writer.write_f32(self.spread.get::<percent>())?;
@@ -130,8 +135,9 @@ impl EffectWrite for PhaseDistortion {
 
         writer.write_u32(0)?; // phase_distortion_unknown1
         writer.write_u32(0)?; // phase_distortion_unknown2
+
         if self.write_version() >= 1034 {
-            writer.write_u32(0)?; // phase_distortion_unknown3
+            writer.write_snapin_id(group_id)?;
         }
 
         writer.write_u32(self.sidechain_mode as u32)?;

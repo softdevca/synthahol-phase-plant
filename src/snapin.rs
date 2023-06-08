@@ -5,7 +5,7 @@ use crate::io::WRITE_SAME_AS;
 use crate::version::Version;
 use crate::Metadata;
 
-type SnapinPosition = u16;
+pub type SnapinId = u16;
 
 #[derive(Debug)]
 pub struct Snapin {
@@ -15,7 +15,10 @@ pub struct Snapin {
     pub minimized: bool,
 
     /// Where in the lane the snapin lives. The minimum position is [`Snapin::MIN_POSITION`].
-    pub position: SnapinPosition,
+    pub id: SnapinId,
+
+    /// Position of the group that contains this snapin.
+    pub group_id: Option<SnapinId>,
 
     /// Phase Plant version 1.7 does not use a preset path and stores the
     /// path as the name.
@@ -32,12 +35,12 @@ pub struct Snapin {
 }
 
 impl Snapin {
-    pub const MIN_POSITION: SnapinPosition = 1;
+    pub const MIN_POSITION: SnapinId = 1;
 
     /// Create a snapin that contains the effect.
     pub fn new(
         effect: Box<dyn Effect>,
-        position: SnapinPosition,
+        position: SnapinId,
         enabled: bool,
         minimized: bool,
     ) -> Snapin {
@@ -47,7 +50,7 @@ impl Snapin {
             effect,
             enabled,
             minimized,
-            position,
+            id: position,
             ..Default::default()
         }
     }
@@ -55,7 +58,7 @@ impl Snapin {
     /// Update the position field of the snapin to match the order they are in the list.
     pub fn position_by_index(snapins: &mut [Snapin]) {
         for (position, snapin) in snapins.iter_mut().enumerate() {
-            snapin.position = position as SnapinPosition + Snapin::MIN_POSITION;
+            snapin.id = position as SnapinId + Snapin::MIN_POSITION;
         }
     }
 }
@@ -69,7 +72,8 @@ impl Default for Snapin {
             name: Default::default(),
             enabled: true,
             minimized: false,
-            position: 0,
+            id: 0,
+            group_id: None,
             metadata: Metadata::default(),
             preset_name: String::default(),
             preset_path: Vec::new(),
@@ -86,6 +90,9 @@ impl PartialEq for Snapin {
         self.enabled == other.enabled
             && self.minimized == other.minimized
             && self.name == other.name
+            && self.id == other.id
+            && self.group_id == other.group_id
+            && self.metadata == other.metadata
             && self.host_version == other.host_version
             && self.effect_version == other.effect_version
             && self.preset_name == other.preset_name

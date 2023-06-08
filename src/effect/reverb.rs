@@ -14,7 +14,7 @@ use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::percent;
 use uom::si::time::second;
 
-use crate::Decibels;
+use crate::{Decibels, SnapinId};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -90,9 +90,12 @@ impl EffectRead for Reverb {
 
         reader.expect_u32(0, "reverb_unknown_1")?;
         reader.expect_u32(0, "reverb_unknown_2")?;
-        if effect_version > 1032 {
-            reader.expect_u32(0, "reverb_unknown_3")?;
-        }
+
+        let group_id = if effect_version > 1032 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         Ok(EffectReadReturn::new(
             Box::new(Reverb {
@@ -105,6 +108,7 @@ impl EffectRead for Reverb {
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -115,6 +119,7 @@ impl EffectWrite for Reverb {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_ratio(self.size)?;
         writer.write_seconds(self.decay)?;
@@ -127,8 +132,9 @@ impl EffectWrite for Reverb {
 
         writer.write_u32(0)?; // reverb_unknown1
         writer.write_u32(0)?; // reverb_unknown2
+
         if self.write_version() > 1032 {
-            writer.write_u32(0)?; // reverb_unknown3
+            writer.write_snapin_id(group_id)?;
         }
 
         Ok(())

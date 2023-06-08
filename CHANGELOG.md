@@ -2,7 +2,11 @@
 
 Unreleased changes.
 
+# 0.2.1 (2036-06-07)
+
 * Successfully read more factory presets.
+* Support triggering for the envelope modulator.
+* Convert any legacy Aftertouch modulators to Pressure modulators.
 * Add mod wheel and modulator output modulation sources.
 
 # 0.2.0 (2023-06-05)

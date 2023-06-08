@@ -17,7 +17,7 @@ use uom::num::Zero;
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
-use crate::Decibels;
+use crate::{Decibels, SnapinId};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -134,8 +134,9 @@ impl EffectRead for Distortion {
         reader.expect_u32(0, "distortion_unknown_2")?;
 
         let mut dc_filter = true;
+        let mut group_id = None;
         if effect_version > 1038 {
-            reader.expect_u32(0, "distortion_unknown_3")?;
+            group_id = reader.read_snapin_position()?;
             dc_filter = reader.read_bool32()?;
         }
 
@@ -151,6 +152,7 @@ impl EffectRead for Distortion {
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -161,6 +163,7 @@ impl EffectWrite for Distortion {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
         writer.write_decibels_linear(self.drive)?;
@@ -175,7 +178,7 @@ impl EffectWrite for Distortion {
         writer.write_u32(0)?;
 
         if self.write_version() > 1038 {
-            writer.write_u32(0)?;
+            writer.write_snapin_id(group_id)?;
             writer.write_bool32(self.dc_filter)?;
         }
 

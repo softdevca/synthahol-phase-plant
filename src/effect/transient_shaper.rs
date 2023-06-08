@@ -15,6 +15,7 @@ use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
 use crate::effect::SidechainMode;
+use crate::SnapinId;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -86,9 +87,12 @@ impl EffectRead for TransientShaper {
 
         reader.expect_u32(0, "transient_shaper_unknown_1")?;
         reader.expect_u32(0, "transient_shaper_unknown_2")?;
-        if effect_version >= 1034 {
-            reader.expect_u32(0, "transient_shaper_unknown_3")?;
-        }
+
+        let group_id = if effect_version >= 1034 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         let sidechain_id = reader.read_u32()?;
         let sidechain_mode_str = reader.read_string_and_length()?;
@@ -111,6 +115,7 @@ impl EffectRead for TransientShaper {
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -121,6 +126,7 @@ impl EffectWrite for TransientShaper {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_ratio(self.attack)?;
         writer.write_ratio(self.pump)?;
@@ -132,8 +138,9 @@ impl EffectWrite for TransientShaper {
 
         writer.write_u32(0)?; // transient_shaper_unknown_1
         writer.write_u32(0)?; // transient_shaper_unknown_2
+
         if self.write_version() >= 1034 {
-            writer.write_u32(0)?; // transient_shaper_unknown_3
+            writer.write_snapin_id(group_id)?;
         }
 
         writer.write_u32(self.sidechain_mode as u32)?;

@@ -18,6 +18,8 @@ use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::{percent, ratio};
 use uom::si::time::second;
 
+use crate::SnapinId;
+
 use super::super::io::*;
 use super::{Effect, EffectMode};
 
@@ -133,9 +135,11 @@ impl EffectRead for Delay {
         reader.expect_u32(0, "delay_unknown_5")?;
         reader.expect_u32(0, "delay_unknown_6")?;
 
-        if effect_version >= 1046 {
-            reader.expect_u32(0, "delay_unknown_7")?;
-        }
+        let group_id = if effect_version >= 1046 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         let mut tone = Ratio::zero();
         if effect_version >= 1049 {
@@ -157,6 +161,7 @@ impl EffectRead for Delay {
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -167,6 +172,7 @@ impl EffectWrite for Delay {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
         writer.write_f32(self.time.get::<second>())?;
@@ -187,7 +193,7 @@ impl EffectWrite for Delay {
         writer.write_u32(0)?;
 
         if self.write_version() >= 1049 {
-            writer.write_u32(0)?;
+            writer.write_snapin_id(group_id)?;
             writer.write_f32(self.tone.get::<ratio>())?;
         }
 

@@ -17,6 +17,8 @@ use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 
+use crate::SnapinId;
+
 use super::super::io::*;
 use super::{Effect, EffectMode};
 
@@ -105,9 +107,12 @@ impl EffectRead for Bitcrush {
 
         reader.expect_u32(0, "bitcrush_unknown_1")?;
         reader.expect_u32(0, "bitcrush_unknown_2")?;
-        if effect_version >= 1047 {
-            reader.expect_u32(0, "bitcrush_unknown_3")?;
-        }
+
+        let group_id = if effect_version >= 1047 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         let effect = Box::new(Bitcrush {
             frequency,
@@ -119,7 +124,7 @@ impl EffectRead for Bitcrush {
             mix,
         });
 
-        Ok(EffectReadReturn::new(effect, enabled, minimized))
+        Ok(EffectReadReturn::new(effect, enabled, minimized, group_id))
     }
 }
 
@@ -129,6 +134,7 @@ impl EffectWrite for Bitcrush {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
         writer.write_hertz(self.frequency)?;
@@ -142,9 +148,11 @@ impl EffectWrite for Bitcrush {
 
         writer.write_u32(0)?;
         writer.write_u32(0)?;
+
         if self.write_version() >= 1048 {
-            writer.write_u32(0)?;
+            writer.write_snapin_id(group_id)?;
         }
+
         Ok(())
     }
 
@@ -197,7 +205,7 @@ mod test {
             let snapin = &preset.lanes[0].snapins[0];
             assert!(snapin.enabled);
             assert!(!snapin.minimized);
-            assert_eq!(snapin.position, 1);
+            assert_eq!(snapin.id, 1);
             let effect = snapin.effect.as_bitcrush().unwrap();
             assert_relative_eq!(effect.frequency.get::<hertz>(), 6000.0, epsilon = 3.0);
             assert_eq!(effect.quantize.get::<percent>(), 100.0);

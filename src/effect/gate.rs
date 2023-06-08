@@ -13,7 +13,7 @@ use uom::si::f32::Time;
 use uom::si::time::{millisecond, second};
 
 use crate::effect::SidechainMode;
-use crate::Decibels;
+use crate::{Decibels, SnapinId};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -41,7 +41,6 @@ pub struct Gate {
     pub look_ahead: bool,
     pub flip: bool,
     pub sidechain_mode: SidechainMode,
-    unknown1: u32,
 }
 
 impl dyn Effect {
@@ -68,7 +67,6 @@ impl Default for Gate {
             look_ahead: true,
             flip: false,
             sidechain_mode: SidechainMode::Off,
-            unknown1: 0,
         }
     }
 }
@@ -111,10 +109,11 @@ impl EffectRead for Gate {
         reader.expect_u32(0, "gate_unknown1")?;
         reader.expect_u32(0, "gate_unknown2")?;
 
-        let mut unknown1 = 0;
-        if effect_version > 1029 {
-            unknown1 = reader.read_u32()?;
-        }
+        let group_id = if effect_version > 1029 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         let sidechain_id = reader.read_u32()?;
         let sidechain_mode_str = reader.read_string_and_length()?;
@@ -137,10 +136,10 @@ impl EffectRead for Gate {
                 look_ahead,
                 flip,
                 sidechain_mode,
-                unknown1,
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -151,6 +150,7 @@ impl EffectWrite for Gate {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_f32(self.attack.get::<second>())?;
         writer.write_f32(self.hold.get::<second>())?;
@@ -165,8 +165,9 @@ impl EffectWrite for Gate {
 
         writer.write_u32(0)?; // gate_unknown1
         writer.write_u32(0)?; // gate_unknown2
+
         if self.write_version() > 1029 {
-            writer.write_u32(self.unknown1)?;
+            writer.write_snapin_id(group_id)?;
         }
 
         writer.write_u32(self.sidechain_mode as u32)?;

@@ -1,3 +1,10 @@
 /target
+
+# The Cargo lock file should not be tracked for libraries.
 /Cargo.lock
+
+# MacOS trash
 **/.DS_Store
+
+# A place to store your personal notes.
+TODO.txt

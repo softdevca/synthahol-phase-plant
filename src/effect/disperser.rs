@@ -13,6 +13,8 @@ use std::io::{Error, ErrorKind, Read, Seek, Write};
 use uom::si::f32::Frequency;
 use uom::si::frequency::hertz;
 
+use crate::SnapinId;
+
 use super::super::io::*;
 use super::{Effect, EffectMode};
 
@@ -77,9 +79,12 @@ impl EffectRead for Disperser {
 
         reader.expect_u32(0, "disperser_unknown_1")?;
         reader.expect_u32(0, "disperser_unknown_2")?;
-        if effect_version > 1039 {
-            reader.expect_u32(0, "disperser_unknown_3")?;
-        }
+
+        let group_id = if effect_version > 1039 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         Ok(EffectReadReturn::new(
             Box::new(Disperser {
@@ -90,6 +95,7 @@ impl EffectRead for Disperser {
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -100,6 +106,7 @@ impl EffectWrite for Disperser {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_u32(self.amount)?;
         writer.write_hertz(self.frequency)?;
@@ -112,8 +119,9 @@ impl EffectWrite for Disperser {
 
         writer.write_u32(0)?;
         writer.write_u32(0)?;
+
         if self.write_version() > 1039 {
-            writer.write_u32(0)?;
+            writer.write_snapin_id(group_id)?;
         }
 
         Ok(())

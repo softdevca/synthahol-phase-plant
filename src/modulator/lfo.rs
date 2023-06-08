@@ -12,14 +12,17 @@ use crate::modulator::{Modulator, ModulatorMode, OutputRange};
 use crate::point::{CurvePoint, CurvePointMode};
 use crate::*;
 
+/// [Triggering](https://kilohearts.com/docs/modulation#triggering)
 #[derive(Copy, Clone, Debug, FromRepr, Eq, PartialEq)]
 #[repr(u32)]
 pub enum NoteTriggerMode {
-    // The discriminants correspond to the file format.
+    // The discriminants correspond to the file format. They are in the order
+    // they are in the Phase Plant interface.
     Auto = 3,
-    Legato = 1,
     Never = 0,
-    NoteOn = 2,
+    #[doc(alias = "NoteOn")]
+    Always = 2,
+    Legato = 1,
 }
 
 impl NoteTriggerMode {
@@ -38,7 +41,7 @@ impl Display for NoteTriggerMode {
         let msg = match self {
             NoteTriggerMode::Auto => "Auto",
             NoteTriggerMode::Never => "Never",
-            NoteTriggerMode::NoteOn => "Note On",
+            NoteTriggerMode::Always => "Always",
             NoteTriggerMode::Legato => "Legato",
         };
         f.write_str(msg)
@@ -51,10 +54,10 @@ pub struct LfoModulator {
     pub depth: Ratio,
     pub loop_mode: LoopMode,
     pub rate: Rate,
-    pub note_trigger_mode: NoteTriggerMode,
 
     /// Ranges from -1.0..=1.0
-    pub trigger_threshold: f32,
+    pub trigger_threshold: Ratio,
+    pub note_trigger_mode: NoteTriggerMode,
 
     pub phase_offset: Ratio,
 
@@ -80,7 +83,7 @@ impl Default for LfoModulator {
                 denominator: NoteValue::Sixteenth,
             },
             note_trigger_mode: NoteTriggerMode::Auto,
-            trigger_threshold: 0.5,
+            trigger_threshold: Ratio::new::<ratio>(0.5),
             phase_offset: Ratio::zero(),
 
             shape_name: Some("Pyramid".to_owned()),
@@ -161,6 +164,8 @@ mod test {
         assert_eq!(modulator.rate.numerator, 4);
         assert_eq!(modulator.rate.denominator, NoteValue::Sixteenth);
         assert_relative_eq!(modulator.phase_offset.get::<ratio>(), 0.0);
+        assert_eq!(modulator.trigger_threshold.get::<percent>(), 50.0);
+        assert_eq!(modulator.note_trigger_mode, NoteTriggerMode::Auto);
 
         assert_eq!(modulator.shape_name, Some("Pyramid".to_owned()));
         assert_eq!(
@@ -199,7 +204,7 @@ mod test {
             assert_eq!(modulator.rate.numerator, 4);
             assert_eq!(modulator.rate.denominator, NoteValue::Sixteenth);
             assert_eq!(modulator.note_trigger_mode, NoteTriggerMode::Auto);
-            assert_eq!(modulator.trigger_threshold, 0.5);
+            assert_eq!(modulator.trigger_threshold.get::<ratio>(), 0.5);
             assert_relative_eq!(modulator.phase_offset.get::<ratio>(), 0.0);
 
             assert_eq!(modulator.shape_name, Some("Sine".to_owned()));
@@ -258,7 +263,11 @@ mod test {
             read_modulator_preset("lfo", "lfo-ping_pong-trigger15-2.1.0.phaseplant").unwrap();
         let modulator: &LfoModulator = preset.modulator(0).unwrap();
         assert_eq!(modulator.loop_mode, LoopMode::PingPong);
-        assert_relative_eq!(modulator.trigger_threshold, 0.15, epsilon = 0.01);
+        assert_relative_eq!(
+            modulator.trigger_threshold.get::<ratio>(),
+            0.15,
+            epsilon = 0.01
+        );
     }
 
     /// Primarily testing the note trigger parameter.
@@ -281,7 +290,7 @@ mod test {
             read_modulator_preset("lfo", "lfo-note_trigger_note_on-inverted-2.1.0.phaseplant")
                 .unwrap();
         let modulator: &LfoModulator = preset.modulator(0).unwrap();
-        assert_eq!(modulator.note_trigger_mode, NoteTriggerMode::NoteOn);
+        assert_eq!(modulator.note_trigger_mode, NoteTriggerMode::Always);
         assert_eq!(modulator.output_range, OutputRange::Inverted);
     }
 

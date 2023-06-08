@@ -12,17 +12,6 @@ pub struct MacroControl {
     pub polarity: OutputRange,
 }
 
-impl fmt::Debug for MacroControl {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_fmt(format_args!(
-            "Macro {{ \"{}\" = {} {}}}",
-            &self.name,
-            &self.value,
-            self.polarity.symbol(),
-        ))
-    }
-}
-
 impl MacroControl {
     /// Number of macros controls (knobs) in the file.
     pub const COUNT: usize = 8;
@@ -47,6 +36,17 @@ impl MacroControl {
             Self::new("Macro 7"),
             Self::new("Macro 8"),
         ]
+    }
+}
+
+impl fmt::Debug for MacroControl {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_fmt(format_args!(
+            "Macro {{ \"{}\" = {} {}}}",
+            &self.name,
+            &self.value,
+            self.polarity.symbol(),
+        ))
     }
 }
 

@@ -22,7 +22,7 @@ use uom::si::ratio::percent;
 
 use crate::effect::{FalloffSpeed, FrequencyResolution, SpectrumView, StereoMode};
 use crate::version::Version;
-use crate::{Decibels, PhasePlantRelease};
+use crate::{Decibels, PhasePlantRelease, SnapinId};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -139,7 +139,7 @@ impl SliceEqFilter {
     /// filter.
     pub const ID_WHEN_DELETED: u32 = 99;
 
-    pub const ORDER_TO_DB_PER_OCTAVE: [i32; 7] = [6, 12, 18, 24, 36, 48, 96];
+    pub const ORDER_TO_DB_PER_OCTAVE: [i32; 8] = [6, 12, 18, 24, 36, 48, 72, 96];
 
     pub fn order_db_per_octave(&self) -> Decibels {
         Decibels::new(Self::ORDER_TO_DB_PER_OCTAVE[self.order as usize] as f32)
@@ -355,9 +355,11 @@ impl EffectRead for SliceEq {
             reader.expect_u32(0, "slice_eq_23")?;
         }
 
-        if effect_version >= 1030 {
-            reader.expect_u32(0, "slice_eq_24")?;
-        }
+        let group_id = if effect_version >= 1030 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         let effect = Box::new(SliceEq {
             filters,
@@ -373,6 +375,7 @@ impl EffectRead for SliceEq {
             effect,
             enabled,
             minimized,
+            group_id,
             metadata: Default::default(),
             preset_name,
             preset_path,
@@ -387,6 +390,7 @@ impl EffectWrite for SliceEq {
         _writer: &mut PhasePlantWriter<W>,
         _enabled: bool,
         _minimized: bool,
+        _group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         todo!()
     }
@@ -564,6 +568,23 @@ mod test {
                 assert_eq!(filter.q, 0.5);
             }
         }
+    }
+
+    #[test]
+    fn filter_orders() {
+        let preset =
+            read_effect_preset("slice_eq", "slice_eq-filter_orders-2.1.0.phaseplant").unwrap();
+        let snapin = &preset.lanes[0].snapins[0];
+        let effect = snapin.effect.as_slice_eq().unwrap();
+        let filters = &effect.filters;
+        assert_eq!(filters[0].order_db_per_octave().db(), 6.0);
+        assert_eq!(filters[1].order_db_per_octave().db(), 12.0);
+        assert_eq!(filters[2].order_db_per_octave().db(), 18.0);
+        assert_eq!(filters[3].order_db_per_octave().db(), 24.0);
+        assert_eq!(filters[4].order_db_per_octave().db(), 36.0);
+        assert_eq!(filters[5].order_db_per_octave().db(), 48.0);
+        assert_eq!(filters[6].order_db_per_octave().db(), 72.0);
+        assert_eq!(filters[7].order_db_per_octave().db(), 96.0);
     }
 
     #[test]

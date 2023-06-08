@@ -23,7 +23,7 @@ use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 
 use crate::version::Version;
-use crate::Decibels;
+use crate::{Decibels, SnapinId};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -278,18 +278,19 @@ impl EffectRead for CarveEq {
 
         let mut preset_path = vec![];
         if version_b_major > 5 {
-            // if effect_version > 1022 {
             preset_path = reader.read_path()?;
             trace!("carve eq: preset path {preset_path:?}");
         }
 
         let preset_edited = reader.read_bool32()?;
+        trace!("carve eq: preset edited {preset_edited}");
 
         reader.expect_u8(0, "carve_eq_path_1")?;
 
         let mix = reader.read_ratio()?;
         let enabled = reader.read_bool32()?;
         let minimized = reader.read_bool32()?;
+        trace!("carve eq: mix {mix:?} enabled {enabled} minimized {minimized}");
 
         let mut shape = [[0_f32; Self::BAND_COUNT]; Self::CHANNEL_COUNT];
         for band_idx in 0..Self::BAND_COUNT {
@@ -333,11 +334,13 @@ impl EffectRead for CarveEq {
         }
 
         reader.expect_u32(0, "carve_eq_unknown_22")?;
+
+        let mut group_id = None;
         if effect_version < 1023 {
             reader.expect_u32(0, "carve_eq_unknown_23")?;
             reader.expect_u32(0, "carve_eq_unknown_24")?;
         } else if effect_version >= 1034 {
-            reader.expect_u32(0, "carve_eq_unknown_23")?;
+            group_id = reader.read_snapin_position()?;
         }
 
         let effect = Box::new(CarveEq {
@@ -351,6 +354,7 @@ impl EffectRead for CarveEq {
             effect,
             enabled,
             minimized,
+            group_id,
             metadata: Default::default(),
             preset_name,
             preset_path,
@@ -365,6 +369,7 @@ impl EffectWrite for CarveEq {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         _minimized: bool,
+        _group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_bool8(enabled)?; // FIXME: Duplicate
         writer.write_u8(0)?;

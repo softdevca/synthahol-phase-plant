@@ -16,7 +16,7 @@ use std::io::{Error, ErrorKind, Read, Seek, Write};
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
-use crate::Decibels;
+use crate::{Decibels, SnapinId};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -105,9 +105,11 @@ impl EffectRead for Dynamics {
         let attack = reader.read_ratio()?;
         let knee = reader.read_decibels_db()?;
 
-        if effect_version > 1003 {
-            reader.expect_u32(0, "dynamics_unknown3")?;
-        }
+        let group_id = if effect_version > 1003 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         Ok(EffectReadReturn::new(
             Box::new(Dynamics {
@@ -124,6 +126,7 @@ impl EffectRead for Dynamics {
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -134,6 +137,7 @@ impl EffectWrite for Dynamics {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_f32(self.in_gain.db())?;
         writer.write_f32(self.out_gain.db())?;
@@ -153,7 +157,7 @@ impl EffectWrite for Dynamics {
         writer.write_f32(self.knee.db())?;
 
         if self.write_version() > 1003 {
-            writer.write_u32(0)?; // dynamics_unknown_3
+            writer.write_snapin_id(group_id)?;
         }
 
         Ok(())

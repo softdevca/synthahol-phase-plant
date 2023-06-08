@@ -17,6 +17,8 @@ use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::{percent, ratio};
 use uom::si::time::{millisecond, second};
 
+use crate::SnapinId;
+
 use super::super::io::*;
 use super::{Effect, EffectMode};
 
@@ -97,7 +99,9 @@ impl EffectRead for DualDelay {
         reader.expect_u32(0, "dual_delay_unknown_4")?;
         reader.expect_u32(0, "dual_delay_unknown_5")?;
         reader.expect_u32(3, "dual_delay_unknown_6")?;
-        reader.expect_u32(4, "dual_delay_unknown_7")?;
+
+        // TODO: Group position is a bit of a guess.
+        let group_id = reader.read_snapin_position()?;
 
         let sync = reader.read_bool32()?;
         let duck = reader.read_ratio()?;
@@ -116,6 +120,7 @@ impl EffectRead for DualDelay {
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -126,6 +131,7 @@ impl EffectWrite for DualDelay {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_f32(self.time.get::<second>())?;
         writer.write_f32(self.second_delay_length.get::<ratio>())?;
@@ -141,7 +147,8 @@ impl EffectWrite for DualDelay {
         writer.write_u32(0)?; // dual_delay_unknown_4
         writer.write_u32(0)?; // dual_delay_unknown_5
         writer.write_u32(3)?; // dual_delay_unknown_6
-        writer.write_u32(4)?; // dual_delay_unknown_7
+
+        writer.write_snapin_id(group_id)?;
 
         writer.write_bool32(self.sync)?;
         writer.write_f32(self.duck.get::<ratio>())?;

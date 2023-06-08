@@ -18,6 +18,8 @@ use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 
+use crate::SnapinId;
+
 use super::super::io::*;
 use super::{Effect, EffectMode};
 
@@ -70,7 +72,6 @@ pub struct RingMod {
     pub spread: Ratio,
     pub mix: Ratio,
     pub modulation_mode: ModulationMode,
-    unknown2: u32,
     unknown3: u32,
 }
 
@@ -96,7 +97,6 @@ impl Default for RingMod {
             spread: Ratio::zero(),
             mix: Ratio::new::<percent>(100.0),
             modulation_mode: ModulationMode::SineOscillator,
-            unknown2: 0,
             unknown3: 0,
         }
     }
@@ -148,10 +148,11 @@ impl EffectRead for RingMod {
         reader.expect_u32(0, "ring_mod_unknown_5")?;
         let unknown3 = reader.read_u32()?;
 
-        let mut unknown2 = 0;
-        if effect_version > 1032 {
-            unknown2 = reader.read_u32()?;
-        }
+        let group_id = if effect_version > 1032 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         let mode_str = reader.read_string_and_length()?;
         let modulation_mode = ModulationMode::from_str(&mode_str.unwrap_or_default())?;
@@ -164,11 +165,11 @@ impl EffectRead for RingMod {
                 spread,
                 mix,
                 modulation_mode,
-                unknown2,
                 unknown3,
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -179,6 +180,7 @@ impl EffectWrite for RingMod {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
         writer.write_hertz(self.frequency)?;
@@ -193,7 +195,7 @@ impl EffectWrite for RingMod {
         writer.write_u32(self.unknown3)?;
 
         if self.write_version() > 1032 {
-            writer.write_u32(self.unknown2)?;
+            writer.write_snapin_id(group_id)?;
         }
 
         writer.write_string_and_length(self.modulation_mode.to_string())

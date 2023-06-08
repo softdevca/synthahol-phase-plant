@@ -16,7 +16,7 @@ use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
 use crate::effect::ExternalInputMode;
-use crate::{Decibels, MacroControl};
+use crate::{Decibels, MacroControl, SnapinId};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -77,8 +77,10 @@ impl EffectRead for SnapHeap {
         let effect = SnapHeap::default();
         let enabled = true;
         let minimized = false;
+        let group_id = None;
 
         reader.skip(1849)?;
+
         if effect_version >= 1050 {
             reader.skip(10347)?;
         }
@@ -87,7 +89,12 @@ impl EffectRead for SnapHeap {
             reader.skip(128)?;
         }
 
-        Ok(EffectReadReturn::new(Box::new(effect), enabled, minimized))
+        Ok(EffectReadReturn::new(
+            Box::new(effect),
+            enabled,
+            minimized,
+            group_id,
+        ))
     }
 }
 
@@ -97,6 +104,7 @@ impl EffectWrite for SnapHeap {
         _writer: &mut PhasePlantWriter<W>,
         _enabled: bool,
         _minimized: bool,
+        _group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         todo!()
     }

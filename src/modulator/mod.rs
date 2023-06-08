@@ -105,6 +105,12 @@ impl OutputRange {
 pub enum ModulatorMode {
     // The discriminants correspond to the file format.
     AudioFollower = 12,
+
+    /// The aftertouch modulator was not an officially released modulator,
+    /// though it is included in a couple of historic factory presets.
+    /// It is converted to a Pressure modulator when it is encountered.
+    Aftertouch = 6,
+
     Blank = 0,
     Curve = 21,
     Envelope = 1,
@@ -151,6 +157,7 @@ impl Display for ModulatorMode {
         use ModulatorMode::*;
         let name = match self {
             AudioFollower => "Audio Follower",
+            Aftertouch => "Aftertouch",
             Blank => "Blank",
             Curve => "Curve",
             Envelope => "Envelope",

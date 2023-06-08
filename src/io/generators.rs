@@ -147,6 +147,7 @@ impl GeneratorBlock {
                         mode: CurvePointMode::from_id(reader.read_u32()?)?,
                     });
                 }
+
                 Ok(())
             }
             _ => Ok(()),

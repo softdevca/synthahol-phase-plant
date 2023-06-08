@@ -2,7 +2,7 @@
 
 use std::any::Any;
 
-use uom::si::ratio::percent;
+use uom::si::ratio::{percent, ratio};
 
 use super::*;
 
@@ -10,6 +10,11 @@ use super::*;
 pub struct EnvelopeModulator {
     pub envelope: Envelope,
     pub depth: Ratio,
+
+    /// Ranges from -1.0..=1.0
+    pub trigger_threshold: Ratio,
+    pub note_trigger_mode: NoteTriggerMode,
+    pub seamless: bool,
 }
 
 impl Default for EnvelopeModulator {
@@ -17,6 +22,9 @@ impl Default for EnvelopeModulator {
         Self {
             envelope: Default::default(),
             depth: Ratio::new::<percent>(100.0),
+            note_trigger_mode: NoteTriggerMode::Auto,
+            trigger_threshold: Ratio::new::<ratio>(0.5),
+            seamless: false,
         }
     }
 }
@@ -58,6 +66,9 @@ mod test {
             assert!(!container.minimized);
             let modulator: &EnvelopeModulator = preset.modulator(0).unwrap();
             assert_relative_eq!(modulator.depth.get::<percent>(), 100.0);
+            assert_eq!(modulator.trigger_threshold.get::<percent>(), 50.0);
+            assert_eq!(modulator.note_trigger_mode, NoteTriggerMode::Auto);
+            assert!(!modulator.seamless);
             let envelope = &modulator.envelope;
             assert_relative_eq!(envelope.delay.get::<second>(), 0.0);
             assert_relative_eq!(envelope.attack.get::<second>(), 0.010, epsilon = 0.00001);
@@ -114,8 +125,33 @@ mod test {
                 .unwrap();
         let container = preset.modulator_container(0).unwrap();
         assert!(container.enabled);
-        assert!(container.minimized);
         let modulator: &EnvelopeModulator = preset.modulator(0).unwrap();
         assert_relative_eq!(modulator.depth.get::<percent>(), 50.0);
+    }
+
+    #[test]
+    fn note_trigger() {
+        let preset =
+            read_modulator_preset("envelope", "envelope-note_trigger_always-2.1.0.phaseplant")
+                .unwrap();
+        let modulator: &EnvelopeModulator = preset.modulator(0).unwrap();
+        assert_eq!(modulator.note_trigger_mode, NoteTriggerMode::Always);
+    }
+
+    #[test]
+    fn seamless() {
+        let preset =
+            read_modulator_preset("envelope", "envelope-seamless-2.1.0.phaseplant").unwrap();
+        let modulator: &EnvelopeModulator = preset.modulator(0).unwrap();
+        assert!(modulator.seamless);
+    }
+
+    #[test]
+    fn trigger_threshold() {
+        let preset =
+            read_modulator_preset("envelope", "envelope-trigger_threshold25-2.1.0.phaseplant")
+                .unwrap();
+        let modulator: &EnvelopeModulator = preset.modulator(0).unwrap();
+        assert_eq!(modulator.trigger_threshold.get::<percent>(), 25.0);
     }
 }

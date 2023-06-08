@@ -34,11 +34,11 @@ pub struct RandomModulator {
     pub output_range: OutputRange,
     pub depth: Ratio,
     pub rate: Rate,
-    pub jitter: f32,
-    pub smooth: f32,
-    pub chaos: f32,
+    pub jitter: Ratio,
+    pub smooth: Ratio,
+    pub chaos: Ratio,
+    pub trigger_threshold: Ratio,
     pub note_trigger_mode: NoteTriggerMode,
-    pub trigger_threshold: f32,
     pub voice_mode: VoiceMode,
 }
 
@@ -62,7 +62,7 @@ impl Modulator for RandomModulator {
 mod test {
     use approx::assert_relative_eq;
     use uom::si::frequency::hertz;
-    use uom::si::ratio::percent;
+    use uom::si::ratio::{percent, ratio};
 
     use crate::test::read_modulator_preset;
 
@@ -88,11 +88,11 @@ mod test {
             assert_eq!(modulator.rate.frequency.get::<hertz>(), 1.0);
             assert_eq!(modulator.rate.numerator, 4);
             assert_eq!(modulator.rate.denominator, NoteValue::Sixteenth);
-            assert_eq!(modulator.jitter, 0.0);
-            assert_eq!(modulator.smooth, 0.0);
-            assert_eq!(modulator.chaos, 1.0);
+            assert_eq!(modulator.jitter.get::<percent>(), 0.0);
+            assert_eq!(modulator.smooth.get::<percent>(), 0.0);
+            assert_eq!(modulator.chaos.get::<percent>(), 100.0);
+            assert_eq!(modulator.trigger_threshold.get::<ratio>(), 0.5);
             assert_eq!(modulator.note_trigger_mode, NoteTriggerMode::Auto);
-            assert_eq!(modulator.trigger_threshold, 0.5);
             assert_eq!(modulator.voice_mode, VoiceMode::Unison);
         }
     }
@@ -102,9 +102,9 @@ mod test {
         let preset =
             read_modulator_preset("random", "random-jit10-smo20-cha30-1.8.17.phaseplant").unwrap();
         let modulator: &RandomModulator = preset.modulator(0).unwrap();
-        assert_eq!(modulator.jitter, 0.1);
-        assert_eq!(modulator.smooth, 0.2);
-        assert_eq!(modulator.chaos, 0.3);
+        assert_relative_eq!(modulator.jitter.get::<percent>(), 10.0);
+        assert_relative_eq!(modulator.smooth.get::<percent>(), 20.0);
+        assert_relative_eq!(modulator.chaos.get::<percent>(), 30.0);
     }
 
     #[test]
@@ -125,8 +125,22 @@ mod test {
         )
         .unwrap();
         let modulator: &RandomModulator = preset.modulator(0).unwrap();
-        assert_eq!(modulator.trigger_threshold, 0.25);
+        assert_eq!(modulator.trigger_threshold.get::<percent>(), 25.0);
         assert_eq!(modulator.note_trigger_mode, NoteTriggerMode::Legato);
         assert_eq!(modulator.voice_mode, VoiceMode::Independent);
+    }
+
+    #[test]
+    fn voice_mode() {
+        let preset =
+            read_modulator_preset("random", "random-voice_mode_independent-2.1.0.phaseplant")
+                .unwrap();
+        let modulator: &RandomModulator = preset.modulator(0).unwrap();
+        assert_eq!(modulator.voice_mode, VoiceMode::Independent);
+
+        let preset =
+            read_modulator_preset("random", "random-voice_mode_unison-2.1.0.phaseplant").unwrap();
+        let modulator: &RandomModulator = preset.modulator(0).unwrap();
+        assert_eq!(modulator.voice_mode, VoiceMode::Unison);
     }
 }

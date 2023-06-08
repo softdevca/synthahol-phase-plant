@@ -12,6 +12,8 @@ use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 use std::ops::RangeInclusive;
 
+use crate::SnapinId;
+
 use super::super::io::*;
 use super::{Effect, EffectMode};
 
@@ -107,7 +109,8 @@ impl EffectRead for ChannelMixer {
 
         reader.expect_u32(0, "channel_mixer_unknown_1")?;
         reader.expect_u32(0, "channel_mixer_unknown_2")?;
-        reader.expect_u32(0, "channel_mixer_unknown_3")?;
+
+        let group_id = reader.read_snapin_position()?;
 
         Ok(EffectReadReturn::new(
             Box::new(ChannelMixer {
@@ -118,6 +121,7 @@ impl EffectRead for ChannelMixer {
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -128,6 +132,7 @@ impl EffectWrite for ChannelMixer {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         _minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
         writer.write_f32(self.left_to_left)?;
@@ -137,7 +142,8 @@ impl EffectWrite for ChannelMixer {
 
         writer.write_u32(0)?; // channel_mixer_unknown_1
         writer.write_u32(0)?; // channel_mixer_unknown_2
-        writer.write_u32(0)?; // channel_mixer_unknown_3
+
+        writer.write_snapin_id(group_id)?;
 
         Ok(())
     }
@@ -180,7 +186,7 @@ mod test {
         let snapin = &preset.lanes[0].snapins[0];
         assert!(snapin.enabled);
         assert!(!snapin.minimized);
-        assert_eq!(snapin.position, 1);
+        assert_eq!(snapin.id, 1);
         let effect = snapin.effect.as_channel_mixer().unwrap();
         assert_eq!(effect, &Default::default());
     }

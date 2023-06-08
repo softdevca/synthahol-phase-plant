@@ -19,7 +19,7 @@ use strum_macros::EnumIter;
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
-use crate::{Decibels, MacroControl};
+use crate::{Decibels, MacroControl, SnapinId};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -60,9 +60,6 @@ pub struct Multipass {
     pub mix: Ratio,
     pub external_input_mode: ExternalInputMode,
     pub macro_controls: [MacroControl; MacroControl::COUNT],
-    unknown1: [u8; 1957],
-    unknown2: [u8; 10239],
-    unknown3: [u8; 128],
 }
 
 impl Default for Multipass {
@@ -73,9 +70,6 @@ impl Default for Multipass {
             mix: Ratio::new::<percent>(100.0),
             external_input_mode: ExternalInputMode::Off,
             macro_controls: MacroControl::defaults(),
-            unknown1: [0_u8; 1957],
-            unknown2: [0_u8; 10239],
-            unknown3: [0_u8; 128],
         }
     }
 }
@@ -114,13 +108,22 @@ impl EffectRead for Multipass {
             ));
         }
 
+        // MINIMIZED for 1.8.0 at 14626
+        // println!("MULTIPASS: START {}", reader.pos());
         let mut effect = Multipass::default();
         let minimized = false;
         let enabled = true;
+        let group_id = None;
 
-        reader.read_exact(&mut effect.unknown1)?;
+        reader.skip(229)?;
 
-        // FIXME: MUST SAVE THESE
+        for mut macro_control in &mut effect.macro_controls {
+            macro_control.value = reader.read_f32()?;
+        }
+
+        println!("AFTER CONTROLS: START {}", reader.pos());
+        reader.skip(1696)?;
+
         if effect_version >= 1056 {
             reader.skip(10239 - 149)?;
         }
@@ -134,20 +137,24 @@ impl EffectRead for Multipass {
             reader.skip(128)?;
         }
 
-        Ok(EffectReadReturn::new(Box::new(effect), enabled, minimized))
+        Ok(EffectReadReturn::new(
+            Box::new(effect),
+            enabled,
+            minimized,
+            group_id,
+        ))
     }
 }
 
 impl EffectWrite for Multipass {
     fn write<W: Write + Seek>(
         &self,
-        writer: &mut PhasePlantWriter<W>,
+        _writer: &mut PhasePlantWriter<W>,
         _enabled: bool,
         _minimized: bool,
+        _group_id: Option<SnapinId>,
     ) -> io::Result<()> {
-        writer.write_all_u8(&self.unknown1)?;
-        writer.write_all_u8(&self.unknown2)?;
-        writer.write_all_u8(&self.unknown3)
+        todo!()
     }
 
     fn write_version(&self) -> u32 {
@@ -191,6 +198,7 @@ mod test {
     #[test]
     pub fn init() {
         for file in &[
+            "multipass-1.8.0.phaseplant",
             "multipass-1.8.5.phaseplant",
             "multipass-2.0.12.phaseplant",
             "multipass-2.0.16.phaseplant",
@@ -200,13 +208,13 @@ mod test {
             let snapin = &preset.lanes[0].snapins[0];
             assert!(snapin.enabled);
             assert!(!snapin.minimized);
-            let _effect = snapin.effect.as_multipass().unwrap();
-            // assert_eq!(effect, &Default::default());
+            let effect = snapin.effect.as_multipass().unwrap();
+            assert_eq!(effect, &Default::default());
         }
     }
 
     // #[test]
-    pub fn _parts_version_1() {
+    pub fn _macro_values() {
         let preset = read_effect_preset(
             "multipass",
             "multipass-macro_values-minimized-1.8.0.phaseplant",
@@ -224,7 +232,10 @@ mod test {
         assert_relative_eq!(effect.macro_controls[5].value, 0.6);
         assert_relative_eq!(effect.macro_controls[6].value, 0.7);
         assert_relative_eq!(effect.macro_controls[7].value, 0.8);
+    }
 
+    // #[test]
+    pub fn _parts_version_1() {
         let preset = read_effect_preset(
             "multipass",
             "multipass-pre_fx-gain5-pan25-mix50-1.8.0.phaseplant",

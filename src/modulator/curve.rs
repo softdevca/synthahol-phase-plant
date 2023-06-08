@@ -25,7 +25,7 @@ pub struct CurveModulator {
     pub rate: Rate,
 
     /// Ranges from -1.0..=1.0
-    pub trigger_threshold: f32,
+    pub trigger_threshold: Ratio,
 
     pub depth: Ratio,
 
@@ -47,7 +47,7 @@ impl Default for CurveModulator {
                 denominator: NoteValue::Sixteenth,
             },
             note_trigger_mode: NoteTriggerMode::Auto,
-            trigger_threshold: 0.5,
+            trigger_threshold: Ratio::new::<ratio>(0.5),
             depth: Ratio::new::<ratio>(1.0),
             shape_name: Some("Slope".to_owned()),
             shape_path: Some("factory/Simple/Slope.lfo".to_owned()),

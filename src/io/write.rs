@@ -122,6 +122,10 @@ impl<T: Write + Seek> PhasePlantWriter<T> {
         self.write_f32(value.get::<second>())
     }
 
+    pub(crate) fn write_snapin_id(&mut self, pos: Option<SnapinId>) -> Result<()> {
+        self.write_u32(pos.unwrap_or_default() as u32)
+    }
+
     pub(crate) fn write_u8(&mut self, value: u8) -> Result<()> {
         self.inner.write_u8(value)
     }
@@ -455,9 +459,9 @@ impl Preset {
                 trace!("modulator: unknown pos {}", writer.pos_text());
             }
             writer.write_f32(1.0)?; // FIXME: Unknown1
-            writer.write_f32(block.random_smooth)?;
-            writer.write_f32(block.random_jitter)?;
-            writer.write_f32(block.random_chaos)?;
+            writer.write_ratio(block.random_smooth)?;
+            writer.write_ratio(block.random_jitter)?;
+            writer.write_ratio(block.random_chaos)?;
 
             let modulator_end_pos = writer.stream_position()?;
             writer
@@ -754,7 +758,7 @@ impl Preset {
                 let snapin_positions: Vec<usize> = lane
                     .snapins
                     .iter()
-                    .map(|snapin| snapin.position as usize)
+                    .map(|snapin| snapin.id as usize)
                     .collect();
                 if !snapin_positions.iter().copied().eq(1..=lane.snapins.len()) {
                     let positions_text: String =
@@ -788,7 +792,7 @@ impl Preset {
                     writer.write_u8(WRITE_SAME_AS.version().extra)?;
 
                     writer.write_string_and_length(snapin.name.as_str())?;
-                    writer.write_u16(snapin.position)?;
+                    writer.write_u16(snapin.id)?;
 
                     // Effect
                     let effect_start_pos = writer.stream_position()?;
@@ -801,9 +805,12 @@ impl Preset {
                     writer.write_path(&snapin.preset_path)?;
                     writer.write_bool32(snapin.preset_edited)?;
                     writer.write_u8(0)?; // snapin_prologue_unknown
-                    snapin
-                        .effect
-                        .write(&mut writer, snapin.enabled, snapin.minimized)?;
+                    snapin.effect.write(
+                        &mut writer,
+                        snapin.enabled,
+                        snapin.minimized,
+                        snapin.group_id,
+                    )?;
                     let effect_end_pos = writer.stream_position()?;
                     writer.inner.seek(SeekFrom::Start(effect_start_pos))?;
                     writer.write_u32(

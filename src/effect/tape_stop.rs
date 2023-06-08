@@ -13,6 +13,8 @@ use std::io::{Error, ErrorKind, Read, Seek, Write};
 use uom::si::f32::Time;
 use uom::si::time::second;
 
+use crate::SnapinId;
+
 use super::super::io::*;
 use super::{Effect, EffectMode};
 
@@ -75,9 +77,12 @@ impl EffectRead for TapeStop {
 
         reader.expect_u32(0, "tape_stop_unknown2")?;
         reader.expect_u32(0, "tape_stop_unknown3")?;
-        if effect_version > 1038 {
-            reader.expect_u32(0, "tape_stop_unknown4")?;
-        }
+
+        let group_id = if effect_version > 1038 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         Ok(EffectReadReturn::new(
             Box::new(TapeStop {
@@ -88,6 +93,7 @@ impl EffectRead for TapeStop {
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -98,6 +104,7 @@ impl EffectWrite for TapeStop {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_bool32(self.running)?;
         writer.write_seconds(self.start_time)?;
@@ -108,8 +115,9 @@ impl EffectWrite for TapeStop {
 
         writer.write_u32(0)?;
         writer.write_u32(0)?;
+
         if self.write_version() > 1038 {
-            writer.write_u32(0)?;
+            writer.write_snapin_id(group_id)?;
         }
 
         Ok(())

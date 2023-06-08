@@ -8,6 +8,7 @@ pub struct EffectReadReturn {
     pub effect: Box<dyn Effect>,
     pub enabled: bool,
     pub minimized: bool,
+    pub group_id: Option<SnapinId>,
     pub metadata: Metadata,
     pub preset_name: Option<String>,
     pub preset_path: Vec<String>,
@@ -15,11 +16,17 @@ pub struct EffectReadReturn {
 }
 
 impl EffectReadReturn {
-    pub(crate) fn new(effect: Box<dyn Effect>, enabled: bool, minimized: bool) -> Self {
+    pub(crate) fn new(
+        effect: Box<dyn Effect>,
+        enabled: bool,
+        minimized: bool,
+        group_id: Option<SnapinId>,
+    ) -> Self {
         Self {
             effect,
             enabled,
             minimized,
+            group_id,
             metadata: Default::default(),
             preset_name: None,
             preset_path: vec![],
@@ -41,6 +48,7 @@ pub(crate) trait EffectWrite {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()>;
 
     #[must_use]
@@ -53,6 +61,7 @@ impl dyn Effect {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         use EffectMode::*;
         // Not the greatest fan of the lack of dynamic dispatch here.
@@ -60,127 +69,163 @@ impl dyn Effect {
             Bitcrush => self
                 .as_bitcrush()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             CarveEq => self
                 .as_carve_eq()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             ChannelMixer => self
                 .as_channel_mixer()
                 .unwrap()
-                .write(writer, enabled, minimized),
-            Chorus => self.as_chorus().unwrap().write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
+            Chorus => self
+                .as_chorus()
+                .unwrap()
+                .write(writer, enabled, minimized, group_id),
             CombFilter => self
                 .as_comb_filter()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             Compressor => self
                 .as_compressor()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             Convolver => self
                 .as_convolver()
                 .unwrap()
-                .write(writer, enabled, minimized),
-            Delay => self.as_delay().unwrap().write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
+            Delay => self
+                .as_delay()
+                .unwrap()
+                .write(writer, enabled, minimized, group_id),
             Disperser => self
                 .as_disperser()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             Distortion => self
                 .as_distortion()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             DualDelay => self
                 .as_dual_delay()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             Dynamics => self
                 .as_dynamics()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             Ensemble => self
                 .as_ensemble()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             Faturator => self
                 .as_faturator()
                 .unwrap()
-                .write(writer, enabled, minimized),
-            Filter => self.as_filter().unwrap().write(writer, enabled, minimized),
-            Flanger => self.as_flanger().unwrap().write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
+            Filter => self
+                .as_filter()
+                .unwrap()
+                .write(writer, enabled, minimized, group_id),
+            Flanger => self
+                .as_flanger()
+                .unwrap()
+                .write(writer, enabled, minimized, group_id),
             FormantFilter => self
                 .as_formant_filter()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             FrequencyShifter => self
                 .as_frequency_shifter()
                 .unwrap()
-                .write(writer, enabled, minimized),
-            Gain => self.as_gain().unwrap().write(writer, enabled, minimized),
-            Gate => self.as_gate().unwrap().write(writer, enabled, minimized),
-            Group => self.as_group().unwrap().write(writer, enabled, minimized),
-            Haas => self.as_haas().unwrap().write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
+            Gain => self
+                .as_gain()
+                .unwrap()
+                .write(writer, enabled, minimized, group_id),
+            Gate => self
+                .as_gate()
+                .unwrap()
+                .write(writer, enabled, minimized, group_id),
+            Group => self
+                .as_group()
+                .unwrap()
+                .write(writer, enabled, minimized, group_id),
+            Haas => self
+                .as_haas()
+                .unwrap()
+                .write(writer, enabled, minimized, group_id),
             LadderFilter => self
                 .as_ladder_filter()
                 .unwrap()
-                .write(writer, enabled, minimized),
-            Limiter => self.as_limiter().unwrap().write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
+            Limiter => self
+                .as_limiter()
+                .unwrap()
+                .write(writer, enabled, minimized, group_id),
             Multipass => self
                 .as_multipass()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             NonlinearFilter => self
                 .as_nonlinear_filter()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             PhaseDistortion => self
                 .as_phase_distortion()
                 .unwrap()
-                .write(writer, enabled, minimized),
-            Phaser => self.as_phaser().unwrap().write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
+            Phaser => self
+                .as_phaser()
+                .unwrap()
+                .write(writer, enabled, minimized, group_id),
             PitchShifter => self
                 .as_pitch_shifter()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             Resonator => self
                 .as_resonator()
                 .unwrap()
-                .write(writer, enabled, minimized),
-            Reverb => self.as_reverb().unwrap().write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
+            Reverb => self
+                .as_reverb()
+                .unwrap()
+                .write(writer, enabled, minimized, group_id),
             Reverser => self
                 .as_reverser()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             RingMod => self
                 .as_ring_mod()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             SliceEq => self
                 .as_slice_eq()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             SnapHeap => self
                 .as_snap_heap()
                 .unwrap()
-                .write(writer, enabled, minimized),
-            Stereo => self.as_stereo().unwrap().write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
+            Stereo => self
+                .as_stereo()
+                .unwrap()
+                .write(writer, enabled, minimized, group_id),
             TapeStop => self
                 .as_tape_stop()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             ThreeBandEq => self
                 .as_three_band_eq()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             TranceGate => self
                 .as_trance_gate()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
             TransientShaper => self
                 .as_transient_shaper()
                 .unwrap()
-                .write(writer, enabled, minimized),
+                .write(writer, enabled, minimized, group_id),
         }
     }
 

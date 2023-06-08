@@ -197,6 +197,12 @@ impl<T: Read + Seek> PhasePlantReader<T> {
     pub(crate) fn read_seconds(&mut self) -> Result<Time, Error> {
         self.read_f32().map(Time::new::<second>)
     }
+
+    pub(crate) fn read_snapin_position(&mut self) -> Result<Option<SnapinId>, Error> {
+        self.read_u32()
+            .map(|pos| (pos != 0).then_some(pos as SnapinId))
+    }
+
     /// Read the length of the string then the string. An error is created if
     /// the string exceeds [`READ_STRING_LENGTH_MAX`].
     pub(crate) fn read_string_and_length(&mut self) -> Result<Option<String>, Error> {
@@ -511,8 +517,7 @@ impl Preset {
             let depth = reader.read_ratio()?;
 
             // Retrigger was replaced by NoteTriggerMode in Phase Plant 2.
-            let retrigger = reader.read_bool32()?;
-            let note_trigger_mode = if retrigger {
+            let note_trigger_mode = if reader.read_bool32()? {
                 NoteTriggerMode::Auto
             } else {
                 NoteTriggerMode::Never
@@ -544,11 +549,15 @@ impl Preset {
 
             let multiplier = reader.read_f32()?;
 
-            reader.expect_f32(1.0, "modulator: unknown_1")?;
+            // Usually 1.0 but is 0.7313 for an envelope modulator in the
+            // Laser Faller preset in the Polychrome content bank. It does
+            // not appear to possible to set this value in the Phase Plant
+            // 2.1.0 envelope modulator.
+            let _unknown_1 = reader.read_f32()?;
 
-            let smooth = reader.read_f32()?;
-            let jitter = reader.read_f32()?;
-            let chaos = reader.read_f32()?;
+            let random_smooth = reader.read_ratio()?;
+            let random_jitter = reader.read_ratio()?;
+            let random_chaos = reader.read_ratio()?;
 
             let block = ModulatorBlock {
                 mode,
@@ -564,9 +573,9 @@ impl Preset {
                 loop_mode,
                 note_trigger_mode,
                 envelope,
-                random_jitter: jitter,
-                random_smooth: smooth,
-                random_chaos: chaos,
+                random_jitter,
+                random_smooth,
+                random_chaos,
                 ..Default::default()
             };
             mod_blocks.push(block);
@@ -929,10 +938,11 @@ impl Preset {
                 modulation.curve = Ratio::new::<percent>(reader.read_f32()?);
                 modulation.enabled = reader.read_bool32()?;
             }
-            for _ in 0..(MODULATIONS_MAX - modulations.len()) {
-                reader.expect_f32(0.0, "modulation_curve")?;
-                reader.expect_bool32(true, "modulation_enabled")?;
-            }
+
+            // Skip unused modulations. They have not always been reset back
+            // to the default values.
+            let unused_modulation_count = MODULATIONS_MAX - modulations.len();
+            reader.skip((8 * unused_modulation_count) as i64)?;
 
             trace!("macro controls: polarities pos {}", reader.pos());
             for macro_control in &mut macro_controls {
@@ -942,9 +952,9 @@ impl Preset {
             for mod_block in &mut mod_blocks {
                 mod_block.gain = reader.read_decibels_linear()?;
                 mod_block.group_id = reader.read_u32()?;
-                mod_block.trigger_threshold = reader.read_f32()?;
+                mod_block.trigger_threshold = reader.read_ratio()?;
                 mod_block.note_trigger_mode = NoteTriggerMode::from_id(reader.read_u32()?)?;
-                reader.expect_u32(0, "block_d_unknown_2")?;
+                reader.expect_u32(0, "block_d_unknown")?;
                 mod_block.metering_mode = MeteringMode::from_id(reader.read_u32()?)?;
 
                 // Pitch Tracker
@@ -965,7 +975,6 @@ impl Preset {
                 mod_block.lfo_table_frame = reader.read_f32()?;
             }
 
-            trace!("version 2.0: block F: pos {}", reader.pos());
             for mod_block in &mut mod_blocks {
                 reader.expect_f32(1.0, "block_f_unknown_1")?;
                 mod_block.loop_mode = LoopMode::from_id(reader.read_u32()?)?;
@@ -979,7 +988,6 @@ impl Preset {
                 let _unknown_block_f_4 = reader.read_f32()?;
             }
 
-            trace!("curve_output: block g: pos {}", reader.pos());
             for gen in &mut gen_blocks {
                 gen.curve_edited = reader.read_bool32()?;
                 let _curve_block_unknown_1 = reader.read_bool32()?;
@@ -1006,11 +1014,14 @@ impl Preset {
                 gen.curve_length = reader.read_seconds()?;
             }
 
-            trace!("version 2.0: block J: pos {}", reader.pos());
             for mod_block in &mut mod_blocks {
-                reader.expect_u32(0, "block_j_unknown_1")?;
+                mod_block.envelope_seamless = reader.read_bool32()?;
                 mod_block.voice_mode = VoiceMode::from_id(reader.read_u32()?)?;
-                reader.expect_u32(0, "block_j_unknown_3")?;
+                if mod_block.mode.is_blank() {
+                    reader.skip(4)?;
+                } else {
+                    reader.expect_u32(0, "block_j_unknown")?;
+                }
             }
 
             for gen in &mut gen_blocks {
@@ -1073,11 +1084,14 @@ impl Preset {
                 }
             }
 
-            trace!("block X (version 2.1): pos {}", reader.pos());
+            // Granular generator
             for gen_block in &mut gen_blocks {
-                reader.expect_f32(10.0, "block_x_unknown1")?;
-                reader.expect_u32(4, "block_x_unknown2")?;
-                reader.expect_u32(4, "block_x_unknown3")?;
+                let _granular_block_unknown_1 = reader.read_f32()?;
+
+                // Have seen 2 and 4 in these next two positions.
+                let _granular_block_unknown_2 = reader.read_u32()?;
+                let _granular_block_unknown_3 = reader.read_u32()?;
+
                 gen_block.granular_spawn_rate_mode =
                     GranularSpawnRateMode::from_id(reader.read_u32()?)?;
                 gen_block.granular_chord.picking_pattern =
@@ -1185,10 +1199,6 @@ impl Preset {
                         reader.expect_u32(0, "lane_snapin_effect_unknown_1")?;
                     }
 
-                    // if effect_mode == EffectMode::Chorus && !host_version.is_at_least(&PhasePlantRelease::V1_7_0.version()) {
-                    //     reader.skip(1)?;
-                    // }
-
                     let mut effect_read_return =
                         effect_mode.read_effect(&mut reader, effect_version)?;
 
@@ -1209,7 +1219,8 @@ impl Preset {
                     name: name_opt.unwrap().to_string(),
                     enabled: effect_read_return.enabled,
                     minimized: effect_read_return.minimized,
-                    position,
+                    id: position,
+                    group_id: effect_read_return.group_id,
                     metadata: effect_read_return.metadata,
                     preset_name: effect_read_return.preset_name.unwrap_or_default(),
                     preset_path: effect_read_return.preset_path,
@@ -1502,6 +1513,10 @@ impl Preset {
             use ModulatorMode::*;
             let modulator: Box<dyn Modulator> = match block.mode {
                 AudioFollower => Box::new(AudioFollowerModulator::from(block)),
+
+                // Convert the legacy Aftertouch modulator to Pressure.
+                Aftertouch => Box::new(PressureModulator::from(block)),
+
                 Blank => Box::new(BlankModulator::from(block)),
                 Curve => Box::new(CurveModulator::from(block)),
                 Envelope => Box::new(EnvelopeModulator::from(block)),

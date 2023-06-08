@@ -16,6 +16,8 @@ use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 
+use crate::SnapinId;
+
 use super::super::io::*;
 use super::{Effect, EffectMode};
 
@@ -84,9 +86,12 @@ impl EffectRead for CombFilter {
 
         reader.expect_u32(0, "comb_filter_unknown_1")?;
         reader.expect_u32(0, "comb_filter_unknown_2")?;
-        if effect_version >= 1047 {
-            reader.expect_u32(0, "comb_filter_unknown_3")?;
-        }
+
+        let group_id = if effect_version >= 1047 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         Ok(EffectReadReturn::new(
             Box::new(CombFilter {
@@ -97,6 +102,7 @@ impl EffectRead for CombFilter {
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -107,6 +113,7 @@ impl EffectWrite for CombFilter {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
         writer.write_f32(self.frequency.get::<hertz>())?;
@@ -117,9 +124,11 @@ impl EffectWrite for CombFilter {
 
         writer.write_u32(0)?;
         writer.write_u32(0)?;
+
         if self.write_version() >= 1048 {
-            writer.write_u32(0)?;
+            writer.write_snapin_id(group_id)?;
         }
+
         Ok(())
     }
 

@@ -18,6 +18,7 @@ use uom::si::f32::Frequency;
 use uom::si::frequency::hertz;
 
 use crate::effect::FilterMode;
+use crate::SnapinId;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -131,9 +132,12 @@ impl EffectRead for NonlinearFilter {
 
         reader.expect_u32(0, "nonlinear_filter_unknown1")?;
         reader.expect_u32(0, "nonlinear_filter_unknown2")?;
-        if effect_version > 1000 {
-            reader.expect_u32(0, "nonlinear_filter_unknown3")?;
-        }
+
+        let group_id = if effect_version > 1000 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         Ok(EffectReadReturn::new(
             Box::new(NonlinearFilter {
@@ -145,6 +149,7 @@ impl EffectRead for NonlinearFilter {
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -155,6 +160,7 @@ impl EffectWrite for NonlinearFilter {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_u32(self.filter_mode as u32)?;
         writer.write_u32(self.mode as u32)?;
@@ -166,8 +172,9 @@ impl EffectWrite for NonlinearFilter {
 
         writer.write_u32(0)?; // nonlinear_filter_unknown1
         writer.write_u32(0)?; // nonlinear_filter_unknown2
+
         if self.write_version() > 1000 {
-            writer.write_u32(0)?; // nonlinear_filter_unknown3
+            writer.write_snapin_id(group_id)?;
         }
 
         Ok(())

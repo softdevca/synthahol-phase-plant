@@ -12,6 +12,8 @@ use std::any::Any;
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::SnapinId;
+
 use super::super::io::*;
 use super::{Effect, EffectMode};
 
@@ -56,14 +58,15 @@ impl EffectRead for Group {
 
         reader.expect_u32(0, "group_unknown_1")?;
         reader.expect_u32(0, "group_unknown_2")?;
-        reader.expect_u32(0, "group_unknown_3")?;
 
+        let group_id = reader.read_snapin_position()?;
         let name = reader.read_string_and_length()?;
 
         Ok(EffectReadReturn::new(
             Box::new(Group { name }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -74,14 +77,15 @@ impl EffectWrite for Group {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
         writer.write_bool32(minimized)?;
 
         writer.write_u32(0)?; // group_unknown_1
         writer.write_u32(0)?; // group_unknown_2
-        writer.write_u32(0)?; // group_unknown_3
 
+        writer.write_snapin_id(group_id)?;
         writer.write_string_and_length_opt(&self.name)
     }
 

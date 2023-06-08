@@ -12,7 +12,7 @@ use super::*;
 pub struct SampleAndHoldModulator {
     pub depth: Ratio,
     pub note_trigger_mode: NoteTriggerMode,
-    pub trigger_threshold: f32,
+    pub trigger_threshold: Ratio,
     pub input_a: f32,
     pub input_b: f32,
 }
@@ -22,7 +22,7 @@ impl Default for SampleAndHoldModulator {
         Self {
             depth: Ratio::new::<ratio>(1.0),
             note_trigger_mode: NoteTriggerMode::Auto,
-            trigger_threshold: 0.5,
+            trigger_threshold: Ratio::new::<ratio>(0.5),
             input_a: 0.0,
             input_b: 0.0,
         }
@@ -86,7 +86,7 @@ mod test {
         )
         .unwrap();
         let modulator: &SampleAndHoldModulator = preset.modulator(0).unwrap();
-        assert_relative_eq!(modulator.trigger_threshold, 0.25);
-        assert_eq!(modulator.note_trigger_mode, NoteTriggerMode::NoteOn);
+        assert_relative_eq!(modulator.trigger_threshold.get::<ratio>(), 0.25);
+        assert_eq!(modulator.note_trigger_mode, NoteTriggerMode::Always);
     }
 }

@@ -18,7 +18,7 @@ use uom::si::ratio::percent;
 use uom::si::time::millisecond;
 
 use crate::effect::SidechainMode;
-use crate::Decibels;
+use crate::{Decibels, SnapinId};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -115,9 +115,11 @@ impl EffectRead for Compressor {
         reader.expect_u32(0, "compressor_unknown_1")?;
         reader.expect_u32(0, "compressor_unknown_2")?;
 
-        if effect_version > 1039 {
-            reader.expect_u32(0, "compressor_unknown_3")?;
-        }
+        let group_id = if effect_version > 1039 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         let sidechain_id = reader.read_u32()?;
         let sidechain_mode_str = reader.read_string_and_length()?;
@@ -141,6 +143,7 @@ impl EffectRead for Compressor {
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -151,6 +154,7 @@ impl EffectWrite for Compressor {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
         writer.write_seconds(self.attack)?;
@@ -163,8 +167,8 @@ impl EffectWrite for Compressor {
 
         writer.write_u32(0)?;
         writer.write_u32(0)?;
-        writer.write_u32(0)?;
 
+        writer.write_snapin_id(group_id)?;
         writer.write_u32(self.sidechain_mode as u32)?;
         writer.write_string_and_length(self.sidechain_mode.to_string())
     }
@@ -216,6 +220,7 @@ mod test {
     #[test]
     fn init() {
         for file in &[
+            "compressor-1.8.0.phaseplant",
             "compressor-1.8.5.phaseplant",
             "compressor-1.8.13.phaseplant",
             "compressor-2.0.12.phaseplant",

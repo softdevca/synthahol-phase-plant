@@ -11,7 +11,7 @@ use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
-use crate::Decibels;
+use crate::{Decibels, SnapinId};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -98,14 +98,18 @@ impl EffectRead for Gain {
         if effect_version > 1038 {
             reader.expect_u32(0, "gain_unknown_2")?;
         }
-        if effect_version >= 1048 {
-            reader.expect_u32(0, "gain_unknown_3")?;
-        }
+
+        let group_id = if effect_version >= 1048 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         Ok(EffectReadReturn::new(
             Box::new(Gain { amount, percentage }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -116,6 +120,7 @@ impl EffectWrite for Gain {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_bool32(enabled)?;
         writer.write_f32(self.amount)?;
@@ -126,9 +131,11 @@ impl EffectWrite for Gain {
         writer.write_bool32(self.percentage)?;
 
         writer.write_u32(0)?;
+
         if self.write_version() >= 1050 {
-            writer.write_u32(0)?;
+            writer.write_snapin_id(group_id)?;
         }
+
         Ok(())
     }
 

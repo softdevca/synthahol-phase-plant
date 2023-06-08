@@ -24,9 +24,9 @@ pub struct LfoTableModulator {
     pub loop_mode: LoopMode,
 
     pub note_trigger_mode: NoteTriggerMode,
-    pub trigger_threshold: f32,
+    pub trigger_threshold: Ratio,
 
-    // Portion of 360 degrees.
+    /// Portion of 360 degrees.
     pub phase_offset: Ratio,
 
     /// 0.05% to 20.0%
@@ -52,7 +52,7 @@ impl Default for LfoTableModulator {
             },
             loop_mode: LoopMode::Infinite,
             note_trigger_mode: NoteTriggerMode::Auto,
-            trigger_threshold: 0.5,
+            trigger_threshold: Ratio::new::<ratio>(0.5),
             phase_offset: Ratio::zero(),
             smooth: Ratio::new::<percent>(0.05),
             frame: 0.0,
@@ -129,7 +129,7 @@ mod test {
             assert_eq!(modulator.rate.numerator, 4);
             assert_eq!(modulator.rate.denominator, NoteValue::Sixteenth);
             assert_eq!(modulator.note_trigger_mode, NoteTriggerMode::Auto);
-            assert_eq!(modulator.trigger_threshold, 0.5);
+            assert_eq!(modulator.trigger_threshold.get::<ratio>(), 0.5);
             assert_eq!(modulator.phase_offset, Ratio::zero());
             assert_relative_eq!(modulator.frame, 0.0);
             assert_relative_eq!(modulator.smooth.get::<percent>(), 0.05);
@@ -163,7 +163,7 @@ mod test {
         let modulator: &LfoTableModulator = preset.modulator(0).unwrap();
         assert_eq!(modulator.loop_mode, LoopMode::PingPong);
         assert_eq!(modulator.note_trigger_mode, NoteTriggerMode::Never);
-        assert_relative_eq!(modulator.trigger_threshold, 0.75);
+        assert_relative_eq!(modulator.trigger_threshold.get::<ratio>(), 0.75);
     }
 
     #[test]

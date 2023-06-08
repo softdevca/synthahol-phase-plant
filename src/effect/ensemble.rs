@@ -17,6 +17,8 @@ use strum_macros::FromRepr;
 use uom::si::f32::Ratio;
 use uom::si::ratio::{percent, ratio};
 
+use crate::SnapinId;
+
 use super::super::io::*;
 use super::{Effect, EffectMode};
 
@@ -116,9 +118,12 @@ impl EffectRead for Ensemble {
         let motion_mode = MotionMode::from_id(reader.read_u32()?)?;
 
         reader.expect_u32(0, "ensemble_u4")?;
-        if effect_version >= 1012 {
-            reader.expect_u32(0, "ensemble_u4")?;
-        }
+
+        let group_id = if effect_version >= 1012 {
+            reader.read_snapin_position()?
+        } else {
+            None
+        };
 
         Ok(EffectReadReturn::new(
             Box::new(Ensemble {
@@ -130,6 +135,7 @@ impl EffectRead for Ensemble {
             }),
             enabled,
             minimized,
+            group_id,
         ))
     }
 }
@@ -140,6 +146,7 @@ impl EffectWrite for Ensemble {
         writer: &mut PhasePlantWriter<W>,
         enabled: bool,
         minimized: bool,
+        group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         writer.write_u32(self.voices)?;
         writer.write_f32(self.detune.get::<ratio>())?;
@@ -153,8 +160,9 @@ impl EffectWrite for Ensemble {
         writer.write_u32(self.motion_mode as u32)?;
 
         writer.write_u32(0)?;
+
         if self.write_version() >= 1013 {
-            writer.write_u32(0)?;
+            writer.write_snapin_id(group_id)?;
         }
 
         Ok(())

@@ -49,9 +49,10 @@ pub struct ModulatorBlock {
     pub envelope: Envelope,
     pub rate: Rate,
     pub velocity_trigger_mode: VelocityTriggerMode,
+    pub trigger_threshold: Ratio,
     pub note_trigger_mode: NoteTriggerMode,
-    pub trigger_threshold: f32,
     pub voice_mode: VoiceMode,
+    pub envelope_seamless: bool,
 
     // Audio Follower
     pub metering_mode: MeteringMode,
@@ -90,9 +91,9 @@ pub struct ModulatorBlock {
     pub pitch_tracker_sensitivity: Ratio,
 
     // Random
-    pub random_jitter: f32,
-    pub random_smooth: f32,
-    pub random_chaos: f32,
+    pub random_jitter: Ratio,
+    pub random_smooth: Ratio,
+    pub random_chaos: Ratio,
 
     // Slew Limiter
     pub slew_limiter_attack: Time,
@@ -127,8 +128,9 @@ impl Default for ModulatorBlock {
             },
             velocity_trigger_mode: VelocityTriggerMode::Strike,
             note_trigger_mode: NoteTriggerMode::Auto,
-            trigger_threshold: 0.5,
+            trigger_threshold: Ratio::new::<ratio>(0.5),
             voice_mode: VoiceMode::Unison,
+            envelope_seamless: false,
             phase_offset: Ratio::zero(),
             envelope: Default::default(),
 
@@ -158,9 +160,9 @@ impl Default for ModulatorBlock {
             pitch_tracker_sensitivity: Ratio::zero(),
 
             // Random
-            random_jitter: 0.0,
-            random_smooth: 0.0,
-            random_chaos: 1.0,
+            random_jitter: Ratio::zero(),
+            random_smooth: Ratio::zero(),
+            random_chaos: Ratio::new::<percent>(100.0),
 
             // Slew limiter
             slew_limiter_attack: Time::new::<millisecond>(100.0),
@@ -328,6 +330,9 @@ impl From<&ModulatorBlock> for EnvelopeModulator {
         EnvelopeModulator {
             envelope: block.envelope.clone(),
             depth: block.depth,
+            note_trigger_mode: block.note_trigger_mode,
+            trigger_threshold: block.trigger_threshold,
+            seamless: block.envelope_seamless,
         }
     }
 }
@@ -338,6 +343,9 @@ impl From<&EnvelopeModulator> for ModulatorBlock {
             mode: modulator.mode(),
             envelope: modulator.envelope.clone(),
             depth: modulator.depth,
+            note_trigger_mode: modulator.note_trigger_mode,
+            trigger_threshold: modulator.trigger_threshold,
+            envelope_seamless: modulator.seamless,
             ..Default::default()
         }
     }

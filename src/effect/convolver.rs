@@ -18,6 +18,8 @@ use uom::num::Zero;
 use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::percent;
 
+use crate::SnapinId;
+
 use super::super::io::*;
 use super::{Effect, EffectMode};
 
@@ -97,6 +99,9 @@ impl EffectRead for Convolver {
             ));
         }
 
+        // FIXME
+        let group_id = None;
+
         let mix = reader.read_ratio()?;
         let stretch = reader.read_ratio()?;
         let enabled = reader.read_bool32()?;
@@ -157,7 +162,12 @@ impl EffectRead for Convolver {
             mix,
             reverse,
         };
-        Ok(EffectReadReturn::new(Box::new(effect), enabled, minimized))
+        Ok(EffectReadReturn::new(
+            Box::new(effect),
+            enabled,
+            minimized,
+            group_id,
+        ))
     }
 }
 
@@ -167,6 +177,7 @@ impl EffectWrite for Convolver {
         _writer: &mut PhasePlantWriter<W>,
         _enabled: bool,
         _minimized: bool,
+        _group_id: Option<SnapinId>,
     ) -> io::Result<()> {
         todo!()
     }
