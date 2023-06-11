@@ -39,7 +39,7 @@ pub use self::group::*;
 pub use self::haas::*;
 pub use self::ladder_filter::*;
 pub use self::limiter::*;
-pub use self::multipass::*;
+pub use self::multipass::Multipass;
 pub use self::nonlinear_filter::*;
 pub use self::phase_distortion::*;
 pub use self::phaser::*;

@@ -170,7 +170,7 @@ pub struct Lane {
 
     pub mute: bool,
     pub solo: bool,
-    pub gain: f32,
+    pub gain: Decibels,
     pub mix: Ratio,
 }
 
@@ -196,7 +196,7 @@ impl Default for Lane {
             poly_count: 0,
             mute: false,
             solo: false,
-            gain: 1.0,
+            gain: Decibels::from_linear(1.0),
             mix: Ratio::new::<percent>(100.0),
         }
     }
@@ -478,7 +478,7 @@ pub(crate) mod test {
             assert!(lane.enabled);
             assert_eq!(lane.poly_count, 0);
             assert!(!lane.mute);
-            assert_eq!(lane.gain, 1.0);
+            assert_eq!(lane.gain.linear(), 1.0);
             assert_eq!(lane.mix.get::<percent>(), 100.0);
         });
         assert_eq!(preset.lanes[0].destination, LaneDestination::Lane2);

@@ -361,7 +361,7 @@ impl Preset {
                 lane.destination
             );
             writer.write_bool32(lane.enabled)?;
-            writer.write_f32(lane.gain)?;
+            writer.write_decibels_linear(lane.gain)?;
             writer.write_ratio(lane.mix)?;
             writer.write_u32(lane.destination as u32)?;
         }

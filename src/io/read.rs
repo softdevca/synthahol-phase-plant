@@ -439,7 +439,7 @@ impl Preset {
         for lane_index in 0..Lane::COUNT {
             trace!("lane {}: pos {}", lane_index, reader.pos());
             let enabled = reader.read_bool32()?;
-            let gain = reader.read_f32()?;
+            let gain = reader.read_decibels_linear()?;
             let mix = reader.read_ratio()?;
 
             let dest_id = reader.read_u32()?;
@@ -1671,17 +1671,17 @@ mod test {
     fn lane_gain() {
         let preset = read_preset("lanes", "lane-gains-3-5-10-1.8.13.phaseplant");
         assert_relative_eq!(
-            Decibels::from_linear(preset.lanes[0].gain).db(),
+            preset.lanes[0].gain.db(),
             3.0,
             epsilon = 0.0001
         );
         assert_relative_eq!(
-            Decibels::from_linear(preset.lanes[1].gain).db(),
+            preset.lanes[1].gain.db(),
             5.0,
             epsilon = 0.0001
         );
         assert_relative_eq!(
-            Decibels::from_linear(preset.lanes[2].gain).db(),
+            preset.lanes[2].gain.db(),
             10.0,
             epsilon = 0.0001
         );

@@ -15,7 +15,7 @@ use std::io::{Error, ErrorKind, Read, Seek, Write};
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
-use crate::effect::ExternalInputMode;
+use crate::effect::multipass::ExternalInputMode;
 use crate::{Decibels, MacroControl, SnapinId};
 
 use super::super::io::*;
@@ -120,6 +120,7 @@ mod test {
     use uom::si::ratio::percent;
 
     use crate::effect::*;
+    use crate::effect::multipass::ExternalInputMode;
     use crate::test::read_effect_preset;
 
     use super::SnapHeap;

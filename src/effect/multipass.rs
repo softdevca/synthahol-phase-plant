@@ -10,19 +10,54 @@
 //! | 2.0.12              | 1057           |
 //! | 2.1.0               | 1058           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use log::trace;
 use strum_macros::EnumIter;
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
-use crate::{Decibels, MacroControl, SnapinId};
+use crate::{Decibels, MacroControl, Snapin, SnapinId};
 
-use super::super::io::*;
 use super::{Effect, EffectMode};
+use super::super::io::*;
+
+#[derive(Debug, PartialEq)]
+pub struct Lane {
+    pub enabled: bool,
+
+    /// There is no restriction on the number of snapins.
+    pub snapins: Vec<Snapin>,
+
+    pub mute: bool,
+    pub solo: bool,
+    pub gain: Decibels,
+    pub mix: Ratio,
+    pub pan: Ratio,
+    pub post: Ratio,
+}
+
+impl Lane {
+    pub const COUNT: usize = 7;
+}
+
+impl Default for Lane {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            snapins: Vec::new(),
+            mute: false,
+            solo: false,
+            gain: Decibels::from_linear(1.0),
+            mix: Ratio::new::<percent>(100.0),
+            pan: Ratio::new::<percent>(0.0),
+            post: Ratio::new::<percent>(100.0),
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, EnumIter, Eq, PartialEq)]
 #[repr(u8)]
@@ -53,22 +88,26 @@ impl Display for ExternalInputMode {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Multipass {
+    pub name: Option<String>,
     pub gain: Decibels,
     pub pan: Ratio,
     pub mix: Ratio,
     pub external_input_mode: ExternalInputMode,
+    pub lanes: [Lane; Lane::COUNT],
     pub macro_controls: [MacroControl; MacroControl::COUNT],
 }
 
 impl Default for Multipass {
     fn default() -> Self {
         Self {
+            name: None,
             gain: Decibels::ZERO,
             pan: Ratio::new::<percent>(50.0),
             mix: Ratio::new::<percent>(100.0),
             external_input_mode: ExternalInputMode::Off,
+            lanes: Default::default(),
             macro_controls: MacroControl::defaults(),
         }
     }
@@ -108,21 +147,41 @@ impl EffectRead for Multipass {
             ));
         }
 
-        // MINIMIZED for 1.8.0 at 14626
-        // println!("MULTIPASS: START {}", reader.pos());
+        // FIXME: Metadata is before the start.
+
         let mut effect = Multipass::default();
-        let minimized = false;
+        let preset_name = reader.read_string_and_length()?;
+        let preset_path = reader.read_path()?;
+        let preset_edited = reader.read_bool8()?; // FIXME: Guess
+
+        trace!("multipass: preset name {preset_name:?}, path {preset_path:?}, edited {preset_edited}");
+
         let enabled = true;
         let group_id = None;
 
-        reader.skip(229)?;
+        reader.expect_bool32(true, "multipass_1")?;
+        reader.skip(20)?;
+
+        trace!("multipass: lanes pos {}", reader.pos());
+        for mut lane in &mut effect.lanes {
+            reader.skip(4)?; // FIXME: Decode.
+            lane.gain = reader.read_decibels_linear()?;
+            lane.pan = reader.read_ratio()?;
+            lane.mix = reader.read_ratio()?;
+            lane.post = reader.read_ratio()?;
+            reader.skip(4)?;
+            reader.skip(4)?;
+            trace!("multipass: lane {lane:?}");
+        }
 
         for mut macro_control in &mut effect.macro_controls {
             macro_control.value = reader.read_f32()?;
         }
 
-        println!("AFTER CONTROLS: START {}", reader.pos());
-        reader.skip(1696)?;
+        reader.skip(1696 - 276)?;
+
+        let minimized = reader.read_bool32()?;
+        reader.skip(272)?;
 
         if effect_version >= 1056 {
             reader.skip(10239 - 149)?;
@@ -137,12 +196,21 @@ impl EffectRead for Multipass {
             reader.skip(128)?;
         }
 
-        Ok(EffectReadReturn::new(
-            Box::new(effect),
+        // for macro_control in &mut effect.macro_controls {
+        //     macro_control.name = reader.read_string_and_length()?.unwrap_or_default();
+        // }
+
+        Ok(EffectReadReturn {
+            effect: Box::new(effect),
             enabled,
             minimized,
             group_id,
-        ))
+            metadata: Default::default(),
+            preset_name,
+            preset_path,
+            preset_edited,
+        }
+        )
     }
 }
 
@@ -177,13 +245,21 @@ mod test {
         assert_eq!(effect.gain.db(), 0.0);
         assert_eq!(effect.mix.get::<percent>(), 100.0);
         assert_eq!(effect.external_input_mode, ExternalInputMode::Off);
+        assert_eq!(effect.macro_controls[0].name, "Macro 1");
         assert_eq!(effect.macro_controls[0].value, 0.0);
+        assert_eq!(effect.macro_controls[1].name, "Macro 2");
         assert_eq!(effect.macro_controls[1].value, 0.0);
+        assert_eq!(effect.macro_controls[2].name, "Macro 3");
         assert_eq!(effect.macro_controls[2].value, 0.0);
+        assert_eq!(effect.macro_controls[3].name, "Macro 4");
         assert_eq!(effect.macro_controls[3].value, 0.0);
+        assert_eq!(effect.macro_controls[4].name, "Macro 5");
         assert_eq!(effect.macro_controls[4].value, 0.0);
+        assert_eq!(effect.macro_controls[5].name, "Macro 6");
         assert_eq!(effect.macro_controls[5].value, 0.0);
+        assert_eq!(effect.macro_controls[6].name, "Macro 7");
         assert_eq!(effect.macro_controls[6].value, 0.0);
+        assert_eq!(effect.macro_controls[7].name, "Macro 8");
         assert_eq!(effect.macro_controls[7].value, 0.0);
     }
 
@@ -213,45 +289,85 @@ mod test {
         }
     }
 
-    // #[test]
-    pub fn _macro_values() {
+    /// Each lane has a gain of 10 dB, pan of 20%, mix of 30%, and a post of
+    /// 40% if available.
+    #[test]
+    pub fn lanes_gain_pan_mix_post() {
         let preset = read_effect_preset(
             "multipass",
-            "multipass-macro_values-minimized-1.8.0.phaseplant",
+            "multipass-lanes-gain10-pan20-mix30-post40-2.1.0.phaseplant",
         )
-        .unwrap();
+            .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
-        assert!(snapin.enabled);
-        assert!(snapin.minimized);
         let effect = snapin.effect.as_multipass().unwrap();
-        assert_relative_eq!(effect.macro_controls[0].value, 0.1);
-        assert_relative_eq!(effect.macro_controls[1].value, 0.2);
-        assert_relative_eq!(effect.macro_controls[2].value, 0.3);
-        assert_relative_eq!(effect.macro_controls[3].value, 0.4);
-        assert_relative_eq!(effect.macro_controls[4].value, 0.5);
-        assert_relative_eq!(effect.macro_controls[5].value, 0.6);
-        assert_relative_eq!(effect.macro_controls[6].value, 0.7);
-        assert_relative_eq!(effect.macro_controls[7].value, 0.8);
+
+        let pre_fx = &effect.lanes[5];
+        assert_relative_eq!(pre_fx.gain.db(), 10.0, epsilon = 0.001);
+        assert_relative_eq!(pre_fx.pan.get::<percent>(), 20.0, epsilon = 0.001);
+        assert_relative_eq!(pre_fx.mix.get::<percent>(), 30.0, epsilon = 0.001);
+
+        let post_fx = &effect.lanes[5];
+        assert_relative_eq!(post_fx.gain.db(), 10.0, epsilon = 0.001);
+        assert_relative_eq!(post_fx.pan.get::<percent>(), 20.0, epsilon = 0.001);
+        assert_relative_eq!(post_fx.mix.get::<percent>(), 30.0, epsilon = 0.001);
+
+        for lane in &effect.lanes[0..5] {
+            assert_relative_eq!(lane.gain.db(), 10.0, epsilon = 0.001);
+            assert_relative_eq!(lane.pan.get::<percent>(), 20.0, epsilon = 0.001);
+            assert_relative_eq!(lane.mix.get::<percent>(), 30.0, epsilon = 0.001);
+            assert_relative_eq!(lane.post.get::<percent>(), 40.0, epsilon = 0.001);
+        }
     }
 
     // #[test]
-    pub fn _parts_version_1() {
+    pub fn _macros_value_and_name() {
         let preset = read_effect_preset(
             "multipass",
-            "multipass-pre_fx-gain5-pan25-mix50-1.8.0.phaseplant",
+            "multipass-macros-value_and_name-2.1.0.phaseplant",
         )
-        .unwrap();
+            .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_multipass().unwrap();
-        assert_relative_eq!(effect.gain.db(), 0.0);
-        assert_relative_eq!(effect.pan.get::<percent>(), 25.0);
-        assert_relative_eq!(effect.mix.get::<percent>(), 25.0);
+        assert_eq!(effect.macro_controls[1].name, "Macro Name 1");
+        assert_relative_eq!(effect.macro_controls[0].value, 0.1);
+        assert_eq!(effect.macro_controls[1].name, "Macro Name 2");
+        assert_relative_eq!(effect.macro_controls[1].value, 0.2);
+        assert_eq!(effect.macro_controls[2].name, "Macro Name 3");
+        assert_relative_eq!(effect.macro_controls[2].value, 0.3);
+        assert_eq!(effect.macro_controls[3].name, "Macro Name 4");
+        assert_relative_eq!(effect.macro_controls[3].value, 0.4);
+        assert_eq!(effect.macro_controls[4].name, "Macro Name 5");
+        assert_relative_eq!(effect.macro_controls[4].value, 0.5);
+        assert_eq!(effect.macro_controls[5].name, "Macro Name 6");
+        assert_relative_eq!(effect.macro_controls[5].value, 0.6);
+        assert_eq!(effect.macro_controls[6].name, "Macro Name 7");
+        assert_relative_eq!(effect.macro_controls[6].value, 0.7);
+        assert_eq!(effect.macro_controls[7].name, "Macro Name 8");
+        assert_relative_eq!(effect.macro_controls[7].value, 0.8);
+    }
 
+    #[test]
+    pub fn metadata() {
+        let preset = read_effect_preset(
+            "multipass",
+            "multipass-metadata-2.1.0.phaseplant",
+        )
+            .unwrap();
+        let snapin = &preset.lanes[0].snapins[0];
+        assert_eq!(snapin.preset_name, "Name");
+        assert!(snapin.preset_path.is_empty());
+        let metadata = &snapin.metadata;
+        assert_eq!(metadata.author, Some("softdev.ca".to_owned()));
+        assert_eq!(metadata.description, Some("Description".to_owned()));
+    }
+
+    // #[test]
+    pub fn _parts() {
         let preset = read_effect_preset(
             "multipass",
             "multipass-split_2_100-split_3_2000-disabled-1.8.0.phaseplant",
         )
-        .unwrap();
+            .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         assert!(!snapin.enabled);
         assert!(!snapin.minimized);
@@ -266,7 +382,7 @@ mod test {
             "multipass",
             "multipass-gain10-mix50-disabled-2.0.16.phaseplant",
         )
-        .unwrap();
+            .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         assert!(!snapin.enabled);
         assert!(!snapin.minimized);
@@ -278,7 +394,7 @@ mod test {
             "multipass",
             "multipass-sideband-minimized-2.0.16.phaseplant",
         )
-        .unwrap();
+            .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         assert!(snapin.enabled);
         assert!(snapin.minimized);
