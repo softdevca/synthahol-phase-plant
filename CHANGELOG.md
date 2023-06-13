@@ -1,7 +1,9 @@
 # TBD
 
 Unreleased changes.
+
 * Read more Multipass.
+* Decode more modulations.
 
 # 0.2.1 (2036-06-07)
 

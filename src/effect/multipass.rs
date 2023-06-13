@@ -10,7 +10,7 @@
 //! | 2.0.12              | 1057           |
 //! | 2.1.0               | 1058           |
 
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -22,8 +22,8 @@ use uom::si::ratio::percent;
 
 use crate::{Decibels, MacroControl, Snapin, SnapinId};
 
-use super::{Effect, EffectMode};
 use super::super::io::*;
+use super::{Effect, EffectMode};
 
 #[derive(Debug, PartialEq)]
 pub struct Lane {
@@ -154,7 +154,9 @@ impl EffectRead for Multipass {
         let preset_path = reader.read_path()?;
         let preset_edited = reader.read_bool8()?; // FIXME: Guess
 
-        trace!("multipass: preset name {preset_name:?}, path {preset_path:?}, edited {preset_edited}");
+        trace!(
+            "multipass: preset name {preset_name:?}, path {preset_path:?}, edited {preset_edited}"
+        );
 
         let enabled = true;
         let group_id = None;
@@ -209,8 +211,7 @@ impl EffectRead for Multipass {
             preset_name,
             preset_path,
             preset_edited,
-        }
-        )
+        })
     }
 }
 
@@ -297,7 +298,7 @@ mod test {
             "multipass",
             "multipass-lanes-gain10-pan20-mix30-post40-2.1.0.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_multipass().unwrap();
 
@@ -325,7 +326,7 @@ mod test {
             "multipass",
             "multipass-macros-value_and_name-2.1.0.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_multipass().unwrap();
         assert_eq!(effect.macro_controls[1].name, "Macro Name 1");
@@ -348,11 +349,8 @@ mod test {
 
     #[test]
     pub fn metadata() {
-        let preset = read_effect_preset(
-            "multipass",
-            "multipass-metadata-2.1.0.phaseplant",
-        )
-            .unwrap();
+        let preset =
+            read_effect_preset("multipass", "multipass-metadata-2.1.0.phaseplant").unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         assert_eq!(snapin.preset_name, "Name");
         assert!(snapin.preset_path.is_empty());
@@ -367,7 +365,7 @@ mod test {
             "multipass",
             "multipass-split_2_100-split_3_2000-disabled-1.8.0.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         assert!(!snapin.enabled);
         assert!(!snapin.minimized);
@@ -382,7 +380,7 @@ mod test {
             "multipass",
             "multipass-gain10-mix50-disabled-2.0.16.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         assert!(!snapin.enabled);
         assert!(!snapin.minimized);
@@ -394,7 +392,7 @@ mod test {
             "multipass",
             "multipass-sideband-minimized-2.0.16.phaseplant",
         )
-            .unwrap();
+        .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
         assert!(snapin.enabled);
         assert!(snapin.minimized);

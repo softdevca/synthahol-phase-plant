@@ -119,8 +119,8 @@ mod test {
     use approx::assert_relative_eq;
     use uom::si::ratio::percent;
 
-    use crate::effect::*;
     use crate::effect::multipass::ExternalInputMode;
+    use crate::effect::*;
     use crate::test::read_effect_preset;
 
     use super::SnapHeap;

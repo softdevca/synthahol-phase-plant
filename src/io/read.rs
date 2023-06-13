@@ -1670,21 +1670,9 @@ mod test {
     #[test]
     fn lane_gain() {
         let preset = read_preset("lanes", "lane-gains-3-5-10-1.8.13.phaseplant");
-        assert_relative_eq!(
-            preset.lanes[0].gain.db(),
-            3.0,
-            epsilon = 0.0001
-        );
-        assert_relative_eq!(
-            preset.lanes[1].gain.db(),
-            5.0,
-            epsilon = 0.0001
-        );
-        assert_relative_eq!(
-            preset.lanes[2].gain.db(),
-            10.0,
-            epsilon = 0.0001
-        );
+        assert_relative_eq!(preset.lanes[0].gain.db(), 3.0, epsilon = 0.0001);
+        assert_relative_eq!(preset.lanes[1].gain.db(), 5.0, epsilon = 0.0001);
+        assert_relative_eq!(preset.lanes[2].gain.db(), 10.0, epsilon = 0.0001);
     }
 
     #[test]
