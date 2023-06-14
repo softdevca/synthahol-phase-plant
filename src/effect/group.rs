@@ -8,11 +8,12 @@
 //! | 2.0.0               | 1007           |
 //! | 2.0.16              | 1007           |
 
+use crate::effect::EffectVersion;
 use std::any::Any;
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -20,6 +21,12 @@ use super::{Effect, EffectMode};
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Group {
     pub name: Option<String>,
+}
+
+impl Group {
+    pub fn default_version() -> EffectVersion {
+        1007
+    }
 }
 
 impl dyn Effect {
@@ -75,22 +82,16 @@ impl EffectWrite for Group {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.enabled)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?; // group_unknown_1
         writer.write_u32(0)?; // group_unknown_2
 
-        writer.write_snapin_id(group_id)?;
+        writer.write_snapin_id(snapin.group_id)?;
         writer.write_string_and_length_opt(&self.name)
-    }
-
-    fn write_version(&self) -> u32 {
-        1007
     }
 }
 

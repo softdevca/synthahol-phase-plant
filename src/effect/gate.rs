@@ -12,8 +12,8 @@ use std::io::{Error, ErrorKind, Read, Seek, Write};
 use uom::si::f32::Time;
 use uom::si::time::{millisecond, second};
 
-use crate::effect::SidechainMode;
-use crate::{Decibels, SnapinId};
+use crate::effect::{EffectVersion, SidechainMode};
+use crate::{Decibels, Snapin};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -41,6 +41,12 @@ pub struct Gate {
     pub look_ahead: bool,
     pub flip: bool,
     pub sidechain_mode: SidechainMode,
+}
+
+impl Gate {
+    pub fn default_version() -> EffectVersion {
+        1040
+    }
 }
 
 impl dyn Effect {
@@ -148,9 +154,7 @@ impl EffectWrite for Gate {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
         writer.write_f32(self.attack.get::<second>())?;
         writer.write_f32(self.hold.get::<second>())?;
@@ -160,22 +164,18 @@ impl EffectWrite for Gate {
         writer.write_f32(self.range)?;
 
         writer.write_bool32(self.look_ahead)?;
-        writer.write_bool32(enabled)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.enabled)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?; // gate_unknown1
         writer.write_u32(0)?; // gate_unknown2
 
-        if self.write_version() > 1029 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version > 1029 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         writer.write_u32(self.sidechain_mode as u32)?;
         writer.write_string_and_length(self.sidechain_mode.to_string())
-    }
-
-    fn write_version(&self) -> u32 {
-        1040
     }
 }
 

@@ -12,11 +12,12 @@ use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -30,6 +31,12 @@ pub struct CombFilter {
 
     pub stereo: bool,
     pub mix: Ratio,
+}
+
+impl CombFilter {
+    pub fn default_version() -> EffectVersion {
+        1049
+    }
 }
 
 impl Default for CombFilter {
@@ -111,29 +118,23 @@ impl EffectWrite for CombFilter {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_f32(self.frequency.get::<hertz>())?;
         writer.write_ratio(self.mix)?;
         writer.write_bool32(self.polarity_minus)?;
         writer.write_bool32(self.stereo)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?;
         writer.write_u32(0)?;
 
-        if self.write_version() >= 1048 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version >= 1048 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1049
     }
 }
 

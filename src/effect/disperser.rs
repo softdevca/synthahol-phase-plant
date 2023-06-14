@@ -10,10 +10,11 @@ use std::any::Any;
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use uom::si::f32::Frequency;
 use uom::si::frequency::hertz;
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -26,6 +27,11 @@ pub struct Disperser {
     unknown2: bool,
 }
 
+impl Disperser {
+    pub fn default_version() -> EffectVersion {
+        1050
+    }
+}
 impl Default for Disperser {
     fn default() -> Self {
         Self {
@@ -104,9 +110,7 @@ impl EffectWrite for Disperser {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
         writer.write_u32(self.amount)?;
         writer.write_hertz(self.frequency)?;
@@ -114,21 +118,17 @@ impl EffectWrite for Disperser {
 
         writer.write_bool32(self.unknown2)?;
 
-        writer.write_bool32(enabled)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.enabled)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?;
         writer.write_u32(0)?;
 
-        if self.write_version() > 1039 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version > 1039 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1050
     }
 }
 

@@ -14,11 +14,12 @@ use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use uom::num::Zero;
 use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::percent;
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -43,6 +44,12 @@ pub struct Convolver {
     pub feedback: Ratio,
     pub mix: Ratio,
     pub reverse: bool,
+}
+
+impl Convolver {
+    pub fn default_version() -> EffectVersion {
+        1018
+    }
 }
 
 impl Default for Convolver {
@@ -175,15 +182,9 @@ impl EffectWrite for Convolver {
     fn write<W: Write + Seek>(
         &self,
         _writer: &mut PhasePlantWriter<W>,
-        _enabled: bool,
-        _minimized: bool,
-        _group_id: Option<SnapinId>,
+        _snapin: &Snapin,
     ) -> io::Result<()> {
         todo!()
-    }
-
-    fn write_version(&self) -> u32 {
-        1018
     }
 }
 

@@ -17,8 +17,8 @@ use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::percent;
 use uom::si::time::millisecond;
 
-use crate::effect::SidechainMode;
-use crate::{Decibels, SnapinId};
+use crate::effect::{EffectVersion, SidechainMode};
+use crate::{Decibels, Snapin};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -53,6 +53,12 @@ pub struct Compressor {
     pub release: Time,
     pub makeup: Ratio,
     pub sidechain_mode: SidechainMode,
+}
+
+impl Compressor {
+    pub fn default_version() -> EffectVersion {
+        1050
+    }
 }
 
 impl Default for Compressor {
@@ -152,29 +158,23 @@ impl EffectWrite for Compressor {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_seconds(self.attack)?;
         writer.write_seconds(self.release)?;
         writer.write_u32(self.mode as u32)?;
         writer.write_ratio(self.ratio)?;
         writer.write_decibels_linear(self.threshold)?;
         writer.write_ratio(self.makeup)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?;
         writer.write_u32(0)?;
 
-        writer.write_snapin_id(group_id)?;
+        writer.write_snapin_id(snapin.group_id)?;
         writer.write_u32(self.sidechain_mode as u32)?;
         writer.write_string_and_length(self.sidechain_mode.to_string())
-    }
-
-    fn write_version(&self) -> u32 {
-        1049
     }
 }
 

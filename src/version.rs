@@ -6,8 +6,8 @@ use std::fmt::{Display, Formatter};
 /// Not all versions are listed. Only versions that indicate the the start or
 /// end of a new init preset are included.
 pub enum PhasePlantRelease {
-    /// Some factory presets were created with his versions before the public
-    /// release.
+    /// Some factory presets were created with these versions that were made
+    /// before the public release.
     V1_6_9,
     V1_6_10,
 

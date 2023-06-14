@@ -11,13 +11,14 @@ use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use uom::num::Zero;
 use uom::si::f32::{Frequency, Ratio, Time};
 use uom::si::frequency::hertz;
 use uom::si::ratio::{percent, ratio};
 use uom::si::time::second;
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -39,6 +40,10 @@ pub struct Flanger {
 }
 
 impl Flanger {
+    pub fn default_version() -> EffectVersion {
+        1013
+    }
+
     pub fn offset_degrees(&self) -> f32 {
         self.offset.get::<ratio>() * 360.0
     }
@@ -146,9 +151,7 @@ impl EffectWrite for Flanger {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
         writer.write_f32(self.delay.get::<second>())?;
         writer.write_f32(self.depth.get::<second>())?;
@@ -159,21 +162,17 @@ impl EffectWrite for Flanger {
         writer.write_ratio(self.spread)?;
         writer.write_ratio(self.mix)?;
         writer.write_bool32(self.scroll)?;
-        writer.write_bool32(enabled)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.enabled)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?; // flanger_unknown_1
         writer.write_u32(0)?; // flanger_unknown_2
 
-        if self.write_version() > 1002 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version > 1002 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1013
     }
 }
 

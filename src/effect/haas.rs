@@ -10,10 +10,11 @@ use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use uom::si::f32::Time;
 use uom::si::time::millisecond;
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -22,6 +23,12 @@ use super::{Effect, EffectMode};
 pub struct Haas {
     pub right: bool,
     pub delay: Time,
+}
+
+impl Haas {
+    pub fn default_version() -> EffectVersion {
+        1048
+    }
 }
 
 impl Default for Haas {
@@ -94,27 +101,21 @@ impl EffectWrite for Haas {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_bool32(self.right)?;
         writer.write_seconds(self.delay)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?;
         writer.write_u32(0)?;
 
-        if self.write_version() >= 1048 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version >= 1048 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1048
     }
 }
 

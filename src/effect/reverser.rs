@@ -9,11 +9,12 @@ use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::percent;
 use uom::si::time::{millisecond, second};
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -26,6 +27,12 @@ pub struct Reverser {
     pub mix: Ratio,
     unknown2: u32,
     unknown3: u32,
+}
+
+impl Reverser {
+    pub fn default_version() -> EffectVersion {
+        1049
+    }
 }
 
 impl Default for Reverser {
@@ -115,9 +122,7 @@ impl EffectWrite for Reverser {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
         writer.write_f32(self.time.get::<second>())?;
 
@@ -127,21 +132,17 @@ impl EffectWrite for Reverser {
         writer.write_bool32(self.sync)?;
         writer.write_ratio(self.mix)?;
         writer.write_ratio(self.crossfade)?;
-        writer.write_bool32(enabled)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.enabled)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?;
         writer.write_u32(0)?;
 
-        if self.write_version() > 1038 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version > 1038 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1044
     }
 }
 

@@ -16,7 +16,8 @@ use std::io::{Error, ErrorKind, Read, Seek, Write};
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
-use crate::{Decibels, SnapinId};
+use crate::effect::EffectVersion;
+use crate::{Decibels, Snapin};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -35,6 +36,12 @@ pub struct Dynamics {
     /// Ratios are `1.0 / value`
     pub low_ratio: f32,
     pub high_ratio: f32,
+}
+
+impl Dynamics {
+    pub fn default_version() -> EffectVersion {
+        1014
+    }
 }
 
 impl Default for Dynamics {
@@ -135,9 +142,7 @@ impl EffectWrite for Dynamics {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
         writer.write_f32(self.in_gain.db())?;
         writer.write_f32(self.out_gain.db())?;
@@ -147,8 +152,8 @@ impl EffectWrite for Dynamics {
         writer.write_f32(self.high_ratio)?;
         writer.write_ratio(self.release)?;
         writer.write_ratio(self.mix)?;
-        writer.write_bool32(enabled)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.enabled)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?; // dynamics_unknown_1
         writer.write_u32(0)?; // dynamics_unknown_2
@@ -156,15 +161,11 @@ impl EffectWrite for Dynamics {
         writer.write_ratio(self.attack)?;
         writer.write_f32(self.knee.db())?;
 
-        if self.write_version() > 1003 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version > 1003 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1014
     }
 }
 

@@ -10,11 +10,12 @@ use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::percent;
 use uom::si::time::{millisecond, second};
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -30,6 +31,12 @@ pub struct Resonator {
     pub decay: Time,
     pub intensity: f32,
     pub mix: Ratio,
+}
+
+impl Resonator {
+    pub fn default_version() -> EffectVersion {
+        1049
+    }
 }
 
 impl Default for Resonator {
@@ -114,30 +121,24 @@ impl EffectWrite for Resonator {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_f32(self.note)?;
         writer.write_f32(self.decay.get::<second>())?;
         writer.write_f32(self.intensity)?;
         writer.write_bool32(!self.sawtooth)?;
         writer.write_ratio(self.mix)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?; // resonator_unknown_1
         writer.write_u32(0)?; // resonator_unknown_2
 
-        if self.write_version() > 1038 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version > 1038 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1049
     }
 }
 

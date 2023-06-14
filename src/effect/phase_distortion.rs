@@ -15,8 +15,8 @@ use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 
-use crate::effect::SidechainMode;
-use crate::SnapinId;
+use crate::effect::{EffectVersion, SidechainMode};
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -36,6 +36,12 @@ pub struct PhaseDistortion {
 
     pub mix: Ratio,
     pub sidechain_mode: SidechainMode,
+}
+
+impl PhaseDistortion {
+    pub fn default_version() -> EffectVersion {
+        1034
+    }
 }
 
 impl dyn Effect {
@@ -120,9 +126,7 @@ impl EffectWrite for PhaseDistortion {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
         writer.write_f32(self.drive)?;
         writer.write_f32(self.spread.get::<percent>())?;
@@ -130,22 +134,18 @@ impl EffectWrite for PhaseDistortion {
         writer.write_f32(self.normalize)?;
         writer.write_f32(self.tone.get::<hertz>())?;
         writer.write_f32(self.bias.get::<percent>())?;
-        writer.write_bool32(enabled)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.enabled)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?; // phase_distortion_unknown1
         writer.write_u32(0)?; // phase_distortion_unknown2
 
-        if self.write_version() >= 1034 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version >= 1034 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         writer.write_u32(self.sidechain_mode as u32)?;
         writer.write_string_and_length(self.sidechain_mode.to_string())
-    }
-
-    fn write_version(&self) -> u32 {
-        1034
     }
 }
 

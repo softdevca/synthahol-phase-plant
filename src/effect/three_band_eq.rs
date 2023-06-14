@@ -15,7 +15,8 @@ use std::io::{Error, ErrorKind, Read, Seek, Write};
 use uom::si::f32::Frequency;
 use uom::si::frequency::hertz;
 
-use crate::{Decibels, SnapinId};
+use crate::effect::EffectVersion;
+use crate::{Decibels, Snapin};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -31,6 +32,12 @@ pub struct ThreeBandEq {
     pub low_gain: Decibels,
     pub mid_gain: Decibels,
     pub high_gain: Decibels,
+}
+
+impl ThreeBandEq {
+    pub fn default_version() -> EffectVersion {
+        1026
+    }
 }
 
 impl Default for ThreeBandEq {
@@ -115,30 +122,24 @@ impl EffectWrite for ThreeBandEq {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
         writer.write_f32(self.low_gain.db())?;
         writer.write_f32(self.mid_gain.db())?;
         writer.write_f32(self.high_gain.db())?;
         writer.write_f32(self.low_freq.get::<hertz>())?;
         writer.write_f32(self.high_freq.get::<hertz>())?;
-        writer.write_bool32(enabled)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.enabled)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?; // three_band_eq_unknown_1
         writer.write_u32(0)?; // three_band_eq_unknown_2
 
-        if self.write_version() >= 1025 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version >= 1025 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1026
     }
 }
 

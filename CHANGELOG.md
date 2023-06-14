@@ -2,6 +2,9 @@
 
 Unreleased changes.
 
+# 0.2.2 (2036-06-13)
+
+* Effects now remember their effect version so the same version can be written that was read.
 * Read more Multipass.
 * Decode more modulations.
 

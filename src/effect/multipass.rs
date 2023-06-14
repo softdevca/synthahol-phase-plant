@@ -20,7 +20,8 @@ use strum_macros::EnumIter;
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
-use crate::{Decibels, MacroControl, Snapin, SnapinId};
+use crate::effect::EffectVersion;
+use crate::{Decibels, MacroControl, Snapin};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -97,6 +98,12 @@ pub struct Multipass {
     pub external_input_mode: ExternalInputMode,
     pub lanes: [Lane; Lane::COUNT],
     pub macro_controls: [MacroControl; MacroControl::COUNT],
+}
+
+impl Multipass {
+    pub fn default_version() -> EffectVersion {
+        1058
+    }
 }
 
 impl Default for Multipass {
@@ -218,16 +225,16 @@ impl EffectRead for Multipass {
 impl EffectWrite for Multipass {
     fn write<W: Write + Seek>(
         &self,
-        _writer: &mut PhasePlantWriter<W>,
-        _enabled: bool,
-        _minimized: bool,
-        _group_id: Option<SnapinId>,
+        writer: &mut PhasePlantWriter<W>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        todo!()
-    }
+        writer.write_string_and_length(&snapin.preset_name)?;
+        writer.write_path(&snapin.preset_path)?;
+        writer.write_bool8(snapin.preset_edited)?;
 
-    fn write_version(&self) -> u32 {
-        1058
+        // TODO: Finish writing Multipass
+
+        Ok(())
     }
 }
 

@@ -12,12 +12,13 @@ use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use uom::num::Zero;
 use uom::si::f32::{Ratio, Time};
 use uom::si::ratio::{percent, ratio};
 use uom::si::time::{millisecond, second};
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -33,6 +34,12 @@ pub struct DualDelay {
     pub duck: Ratio,
     pub crosstalk: Ratio,
     pub mix: Ratio,
+}
+
+impl DualDelay {
+    pub fn default_version() -> EffectVersion {
+        1013
+    }
 }
 
 impl Default for DualDelay {
@@ -129,9 +136,7 @@ impl EffectWrite for DualDelay {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
         writer.write_f32(self.time.get::<second>())?;
         writer.write_f32(self.second_delay_length.get::<ratio>())?;
@@ -140,25 +145,21 @@ impl EffectWrite for DualDelay {
         writer.write_f32(self.spread.get::<ratio>())?;
         writer.write_f32(self.tone.get::<ratio>())?;
         writer.write_ratio(self.mix)?;
-        writer.write_bool32(enabled)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.enabled)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?; // dual_delay_unknown_3
         writer.write_u32(0)?; // dual_delay_unknown_4
         writer.write_u32(0)?; // dual_delay_unknown_5
         writer.write_u32(3)?; // dual_delay_unknown_6
 
-        writer.write_snapin_id(group_id)?;
+        writer.write_snapin_id(snapin.group_id)?;
 
         writer.write_bool32(self.sync)?;
         writer.write_f32(self.duck.get::<ratio>())?;
 
         writer.write_u32(0)?;
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1013
     }
 }
 

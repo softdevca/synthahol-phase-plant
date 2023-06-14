@@ -14,8 +14,8 @@ use uom::num::Zero;
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
-use crate::effect::SidechainMode;
-use crate::SnapinId;
+use crate::effect::{EffectVersion, SidechainMode};
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -28,6 +28,12 @@ pub struct TransientShaper {
     pub speed: Ratio,
     pub clip: bool,
     pub sidechain_mode: SidechainMode,
+}
+
+impl TransientShaper {
+    pub fn default_version() -> EffectVersion {
+        1037
+    }
 }
 
 impl Default for TransientShaper {
@@ -124,31 +130,25 @@ impl EffectWrite for TransientShaper {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
         writer.write_ratio(self.attack)?;
         writer.write_ratio(self.pump)?;
         writer.write_ratio(self.sustain)?;
         writer.write_ratio(self.speed)?;
         writer.write_bool32(self.clip)?;
-        writer.write_bool32(enabled)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.enabled)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?; // transient_shaper_unknown_1
         writer.write_u32(0)?; // transient_shaper_unknown_2
 
-        if self.write_version() >= 1034 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version >= 1034 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         writer.write_u32(self.sidechain_mode as u32)?;
         writer.write_string_and_length(self.sidechain_mode.to_string())
-    }
-
-    fn write_version(&self) -> u32 {
-        1037
     }
 }
 

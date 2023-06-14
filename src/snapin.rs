@@ -1,6 +1,6 @@
 //! Snapins are containers for effects.
 
-use crate::effect::{Effect, Filter};
+use crate::effect::{Effect, EffectVersion, Filter};
 use crate::io::WRITE_SAME_AS;
 use crate::version::Version;
 use crate::Metadata;
@@ -9,13 +9,14 @@ pub type SnapinId = u16;
 
 #[derive(Debug)]
 pub struct Snapin {
+    /// Unique ID of the snapin in the lane. It does not represent the order
+    /// of snapins in the lane.
+    pub id: SnapinId,
+
     pub name: String,
     pub metadata: Metadata,
     pub enabled: bool,
     pub minimized: bool,
-
-    /// Where in the lane the snapin lives. The minimum position is [`Snapin::MIN_POSITION`].
-    pub id: SnapinId,
 
     /// Position of the group that contains this snapin.
     pub group_id: Option<SnapinId>,
@@ -30,7 +31,7 @@ pub struct Snapin {
     pub preset_edited: bool,
 
     pub host_version: Version<u8>,
-    pub effect_version: u32,
+    pub effect_version: EffectVersion,
     pub effect: Box<dyn Effect>,
 }
 
@@ -38,27 +39,23 @@ impl Snapin {
     pub const MIN_POSITION: SnapinId = 1;
 
     /// Create a snapin that contains the effect.
-    pub fn new(
-        effect: Box<dyn Effect>,
-        position: SnapinId,
-        enabled: bool,
-        minimized: bool,
-    ) -> Snapin {
+    pub fn new(effect: Box<dyn Effect>, id: SnapinId, enabled: bool, minimized: bool) -> Snapin {
         Snapin {
+            id,
             name: effect.mode().name().to_owned(),
-            effect_version: effect.write_version(),
+            effect_version: effect.mode().default_version(),
             effect,
             enabled,
             minimized,
-            id: position,
             ..Default::default()
         }
     }
 
-    /// Update the position field of the snapin to match the order they are in the list.
-    pub fn position_by_index(snapins: &mut [Snapin]) {
-        for (position, snapin) in snapins.iter_mut().enumerate() {
-            snapin.id = position as SnapinId + Snapin::MIN_POSITION;
+    /// Update the identifiers of the snapin to match the order they are in the
+    /// list of snapins.
+    pub fn update_ids_to_match_order(snapins: &mut [Snapin]) {
+        for (id, snapin) in snapins.iter_mut().enumerate() {
+            snapin.id = id as SnapinId + Snapin::MIN_POSITION;
         }
     }
 }
@@ -69,10 +66,10 @@ impl Snapin {
 impl Default for Snapin {
     fn default() -> Self {
         Self {
+            id: 0,
             name: Default::default(),
             enabled: true,
             minimized: false,
-            id: 0,
             group_id: None,
             metadata: Metadata::default(),
             preset_name: String::default(),
@@ -87,10 +84,10 @@ impl Default for Snapin {
 
 impl PartialEq for Snapin {
     fn eq(&self, other: &Self) -> bool {
-        self.enabled == other.enabled
+        self.id == other.id
+            && self.enabled == other.enabled
             && self.minimized == other.minimized
             && self.name == other.name
-            && self.id == other.id
             && self.group_id == other.group_id
             && self.metadata == other.metadata
             && self.host_version == other.host_version

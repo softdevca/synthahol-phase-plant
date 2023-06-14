@@ -12,13 +12,14 @@ use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use strum_macros::FromRepr;
 use uom::num::Zero;
 use uom::si::f32::{Frequency, Ratio, Time};
 use uom::si::ratio::percent;
 use uom::si::time::millisecond;
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -62,6 +63,12 @@ pub struct PitchShifter {
     pub mix: Ratio,
     pub correlate: bool,
     pub compensation_mode: CompensationMode,
+}
+
+impl PitchShifter {
+    pub fn default_version() -> EffectVersion {
+        1050
+    }
 }
 
 impl Default for PitchShifter {
@@ -150,32 +157,26 @@ impl EffectWrite for PitchShifter {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_hertz(self.pitch)?;
         writer.write_ratio(self.jitter)?;
         writer.write_seconds(self.grain_size)?;
         writer.write_ratio(self.mix)?;
         writer.write_bool32(self.correlate)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?; // pitch_shifter_unknown_1
         writer.write_u32(0)?; // pitch_shifter_unknown_2
 
         writer.write_u32(self.compensation_mode as u32)?;
 
-        if self.write_version() > 1039 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version > 1039 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1050
     }
 }
 

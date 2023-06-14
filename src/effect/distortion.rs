@@ -17,7 +17,8 @@ use uom::num::Zero;
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
-use crate::{Decibels, SnapinId};
+use crate::effect::EffectVersion;
+use crate::{Decibels, Snapin};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -62,6 +63,10 @@ pub struct Distortion {
 }
 
 impl Distortion {
+    pub fn default_version() -> EffectVersion {
+        1050
+    }
+
     pub fn new() -> Self {
         Self::default()
     }
@@ -161,32 +166,26 @@ impl EffectWrite for Distortion {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_decibels_linear(self.drive)?;
         writer.write_ratio(self.bias)?;
         writer.write_ratio(self.spread)?;
         writer.write_u32(self.mode as u32)?;
         writer.write_ratio(self.dynamics)?;
         writer.write_ratio(self.mix)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?;
         writer.write_u32(0)?;
 
-        if self.write_version() > 1038 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version > 1038 {
+            writer.write_snapin_id(snapin.group_id)?;
             writer.write_bool32(self.dc_filter)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1038
     }
 }
 

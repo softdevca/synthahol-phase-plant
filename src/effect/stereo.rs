@@ -11,11 +11,12 @@ use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use uom::num::Zero;
 use uom::si::f32::Ratio;
 use uom::si::ratio::{percent, ratio};
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -25,6 +26,12 @@ pub struct Stereo {
     pub mid: Ratio,
     pub width: Ratio,
     pub pan: Ratio,
+}
+
+impl Stereo {
+    pub fn default_version() -> EffectVersion {
+        1049
+    }
 }
 
 impl Default for Stereo {
@@ -99,29 +106,23 @@ impl EffectWrite for Stereo {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_f32(self.width.get::<ratio>())?;
         writer.write_f32(self.pan.get::<ratio>())?;
         writer.write_f32(self.mid.get::<ratio>())?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?;
         writer.write_u32(0)?;
         writer.write_u32(0)?;
 
-        if self.write_version() >= 1047 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version >= 1047 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1049
     }
 }
 

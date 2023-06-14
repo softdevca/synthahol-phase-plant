@@ -11,7 +11,8 @@ use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
-use crate::{Decibels, SnapinId};
+use crate::effect::EffectVersion;
+use crate::{Decibels, Snapin};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -41,6 +42,10 @@ impl Gain {
     pub fn amount_percentage(&self) -> f32 {
         let range = Self::GAIN_AMOUNT_MAX - Self::GAIN_AMOUNT_MIN;
         (self.amount_db().db() - Self::GAIN_AMOUNT_MIN) / range * 2.0 // 0 to 200%
+    }
+
+    pub fn default_version() -> EffectVersion {
+        1050
     }
 }
 
@@ -118,13 +123,11 @@ impl EffectWrite for Gain {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_f32(self.amount)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?;
 
@@ -132,15 +135,11 @@ impl EffectWrite for Gain {
 
         writer.write_u32(0)?;
 
-        if self.write_version() >= 1050 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version >= 1050 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1050
     }
 }
 

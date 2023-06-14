@@ -97,6 +97,8 @@ mod three_band_eq;
 mod trance_gate;
 mod transient_shaper;
 
+pub type EffectVersion = u32;
+
 pub trait Effect: Downcast + std::fmt::Debug {
     #[must_use]
     fn box_eq(&self, other: &dyn Any) -> bool;
@@ -174,6 +176,51 @@ impl Display for EffectMode {
 }
 
 impl EffectMode {
+    pub fn default_version(&self) -> EffectVersion {
+        match self {
+            EffectMode::Bitcrush => Bitcrush::default_version(),
+            EffectMode::CarveEq => CarveEq::default_version(),
+            EffectMode::ChannelMixer => ChannelMixer::default_version(),
+            EffectMode::Chorus => Chorus::default_version(),
+            EffectMode::CombFilter => CombFilter::default_version(),
+            EffectMode::Compressor => Compressor::default_version(),
+            EffectMode::Convolver => Convolver::default_version(),
+            EffectMode::Delay => Delay::default_version(),
+            EffectMode::Disperser => Disperser::default_version(),
+            EffectMode::Distortion => Distortion::default_version(),
+            EffectMode::DualDelay => DualDelay::default_version(),
+            EffectMode::Dynamics => Dynamics::default_version(),
+            EffectMode::Ensemble => Ensemble::default_version(),
+            EffectMode::Faturator => Faturator::default_version(),
+            EffectMode::Filter => Filter::default_version(),
+            EffectMode::Flanger => Flanger::default_version(),
+            EffectMode::FormantFilter => FormantFilter::default_version(),
+            EffectMode::FrequencyShifter => FrequencyShifter::default_version(),
+            EffectMode::Gain => Gain::default_version(),
+            EffectMode::Gate => Gate::default_version(),
+            EffectMode::Group => Group::default_version(),
+            EffectMode::Haas => Haas::default_version(),
+            EffectMode::LadderFilter => LadderFilter::default_version(),
+            EffectMode::Limiter => Limiter::default_version(),
+            EffectMode::Multipass => Multipass::default_version(),
+            EffectMode::NonlinearFilter => NonlinearFilter::default_version(),
+            EffectMode::PhaseDistortion => PhaseDistortion::default_version(),
+            EffectMode::Phaser => Phaser::default_version(),
+            EffectMode::PitchShifter => PitchShifter::default_version(),
+            EffectMode::Resonator => Resonator::default_version(),
+            EffectMode::Reverb => Reverb::default_version(),
+            EffectMode::Reverser => Reverser::default_version(),
+            EffectMode::RingMod => RingMod::default_version(),
+            EffectMode::SliceEq => SliceEq::default_version(),
+            EffectMode::SnapHeap => SnapHeap::default_version(),
+            EffectMode::Stereo => Stereo::default_version(),
+            EffectMode::TapeStop => TapeStop::default_version(),
+            EffectMode::ThreeBandEq => ThreeBandEq::default_version(),
+            EffectMode::TranceGate => TranceGate::default_version(),
+            EffectMode::TransientShaper => TransientShaper::default_version(),
+        }
+    }
+
     pub(crate) fn is_host(&self) -> bool {
         use EffectMode::*;
         match self {

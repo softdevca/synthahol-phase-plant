@@ -11,11 +11,12 @@ use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use uom::num::Zero;
 use uom::si::f32::Frequency;
 use uom::si::frequency::kilohertz;
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -29,6 +30,10 @@ impl FrequencyShifter {
     // TODO: Enable when uom supports const fn.
     // pub const MIN_FREQUENCY: Frequency = Frequency::new::<hertz>(-5000.0);
     // pub const MAX_FREQUENCY: Frequency = Frequency::new::<hertz>(5000.0);
+
+    pub fn default_version() -> EffectVersion {
+        1048
+    }
 }
 
 impl Default for FrequencyShifter {
@@ -99,26 +104,20 @@ impl EffectWrite for FrequencyShifter {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_f32(self.frequency.get::<kilohertz>())?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?; // frequency_shifter_unknown_1
         writer.write_u32(0)?; // frequency_shifter_unknown_2
 
-        if self.write_version() > 1037 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version > 1037 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1047
     }
 }
 

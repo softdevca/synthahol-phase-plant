@@ -16,7 +16,8 @@ use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
 use crate::effect::multipass::ExternalInputMode;
-use crate::{Decibels, MacroControl, SnapinId};
+use crate::effect::EffectVersion;
+use crate::{Decibels, MacroControl, Snapin};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -27,6 +28,12 @@ pub struct SnapHeap {
     pub mix: Ratio,
     pub external_input_mode: ExternalInputMode,
     pub macro_controls: [MacroControl; MacroControl::COUNT],
+}
+
+impl SnapHeap {
+    pub fn default_version() -> EffectVersion {
+        1051
+    }
 }
 
 impl Default for SnapHeap {
@@ -102,15 +109,9 @@ impl EffectWrite for SnapHeap {
     fn write<W: Write + Seek>(
         &self,
         _writer: &mut PhasePlantWriter<W>,
-        _enabled: bool,
-        _minimized: bool,
-        _group_id: Option<SnapinId>,
+        _snapin: &Snapin,
     ) -> io::Result<()> {
         todo!()
-    }
-
-    fn write_version(&self) -> u32 {
-        12295
     }
 }
 

@@ -17,7 +17,8 @@ use strum_macros::FromRepr;
 use uom::si::f32::Frequency;
 use uom::si::frequency::hertz;
 
-use crate::{Decibels, SnapinId};
+use crate::effect::EffectVersion;
+use crate::{Decibels, Snapin};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -71,6 +72,10 @@ pub struct Filter {
 
 impl Filter {
     pub const RESONANCE_MIN: f64 = 0.1;
+
+    pub fn default_version() -> EffectVersion {
+        1051
+    }
 }
 
 impl dyn Effect {
@@ -160,31 +165,25 @@ impl EffectWrite for Filter {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_u32(self.filter_mode as u32)?;
         writer.write_f32(self.cutoff.get::<hertz>())?;
         writer.write_f32(self.q)?;
         writer.write_f32(self.gain.db())?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?; // filter_unknown1
         writer.write_u32(0)?; // filter_unknown2
 
         writer.write_u32(self.slope)?;
 
-        if self.write_version() > 1040 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version > 1040 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1051
     }
 }
 

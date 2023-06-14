@@ -11,12 +11,13 @@ use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use uom::si::f32::{Frequency, Ratio, Time};
 use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 use uom::si::time::millisecond;
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -32,6 +33,10 @@ pub struct Chorus {
 }
 
 impl Chorus {
+    pub fn default_version() -> EffectVersion {
+        1002
+    }
+
     pub fn new() -> Self {
         Default::default()
     }
@@ -132,29 +137,23 @@ impl EffectWrite for Chorus {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_seconds(self.delay)?;
         writer.write_hertz(self.rate)?;
         writer.write_seconds(self.depth)?;
         writer.write_ratio(self.spread)?;
         writer.write_ratio(self.mix)?;
         writer.write_u32(self.taps as u32 - 2)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?; // chorus_unknown_1
         writer.write_u32(0)?; // chorus_unknown_2
 
-        writer.write_snapin_id(group_id)?;
+        writer.write_snapin_id(snapin.group_id)?;
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1048
     }
 }
 

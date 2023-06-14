@@ -22,8 +22,9 @@ use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 
+use crate::effect::EffectVersion;
 use crate::version::Version;
-use crate::{Decibels, SnapinId};
+use crate::{Decibels, Snapin};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -176,6 +177,10 @@ pub struct CarveEq {
 impl CarveEq {
     pub const BAND_COUNT: usize = 31;
     pub const CHANNEL_COUNT: usize = 2;
+
+    pub fn default_version() -> EffectVersion {
+        1034
+    }
 }
 
 impl Default for CarveEq {
@@ -367,11 +372,9 @@ impl EffectWrite for CarveEq {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        _minimized: bool,
-        _group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool8(enabled)?; // FIXME: Duplicate
+        writer.write_bool8(snapin.enabled)?; // FIXME: Duplicate
         writer.write_u8(0)?;
         writer.write_u8(0)?;
         writer.write_u32(0)?;
@@ -380,17 +383,13 @@ impl EffectWrite for CarveEq {
         writer.write_u8(0)?;
         writer.write_ratio(self.mix)?;
         writer.write_f32(self.gain.db())?;
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
 
         for _ in 0..32 {
             writer.skip(19)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1034
     }
 }
 

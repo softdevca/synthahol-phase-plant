@@ -20,9 +20,9 @@ use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 
-use crate::effect::{FalloffSpeed, FrequencyResolution, SpectrumView, StereoMode};
+use crate::effect::{EffectVersion, FalloffSpeed, FrequencyResolution, SpectrumView, StereoMode};
 use crate::version::Version;
-use crate::{Decibels, PhasePlantRelease, SnapinId};
+use crate::{Decibels, PhasePlantRelease, Snapin};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -181,6 +181,10 @@ pub struct SliceEq {
 
 impl SliceEq {
     pub const FILTER_COUNT_MAX: usize = 32;
+
+    pub fn default_version() -> EffectVersion {
+        1032
+    }
 }
 
 impl Default for SliceEq {
@@ -388,15 +392,10 @@ impl EffectWrite for SliceEq {
     fn write<W: Write + Seek>(
         &self,
         _writer: &mut PhasePlantWriter<W>,
-        _enabled: bool,
-        _minimized: bool,
-        _group_id: Option<SnapinId>,
+        _snapin: &Snapin,
     ) -> io::Result<()> {
-        todo!()
-    }
-
-    fn write_version(&self) -> u32 {
-        todo!()
+        // TODO: Write Slice EQ
+        Ok(())
     }
 }
 

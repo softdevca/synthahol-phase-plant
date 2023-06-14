@@ -752,27 +752,6 @@ impl Preset {
                 );
                 writer.write_u32(snapin_count as u32)?;
 
-                // Snapin positions must be monotonically increasing from zero.
-                // TODO: If they snapins aren't referred by position anywhere they position
-                // can be automatically fixed up.
-                let snapin_positions: Vec<usize> = lane
-                    .snapins
-                    .iter()
-                    .map(|snapin| snapin.id as usize)
-                    .collect();
-                if !snapin_positions.iter().copied().eq(1..=lane.snapins.len()) {
-                    let positions_text: String =
-                        snapin_positions.iter().map(|pos| pos.to_string()).collect();
-                    return Err(Error::new(
-                        ErrorKind::InvalidData,
-                        format!(
-                            "Positions of snapins for lane {} are not in order ({})",
-                            lane_index + 1,
-                            positions_text
-                        ),
-                    ));
-                }
-
                 for snapin in &lane.snapins {
                     let mut effect_id_bytes = u32::to_ne_bytes(snapin.effect.mode() as u32);
                     effect_id_bytes.reverse();
@@ -798,19 +777,14 @@ impl Preset {
                     let effect_start_pos = writer.stream_position()?;
                     writer.write_u32(0)?; // Length, updated later
                     writer.write_u32(FORMAT_VERSION.major)?;
-                    writer.write_u32(snapin.effect.write_version())?;
+                    writer.write_u32(snapin.effect_version)?;
                     writer.write_bool32(true)?; // Unknown snapin bool
                     writer.write_string_and_length(snapin.preset_name.as_str())?;
                     // FIXME: Probably need to do something different with effects with metadata. See reading.
                     writer.write_path(&snapin.preset_path)?;
                     writer.write_bool32(snapin.preset_edited)?;
                     writer.write_u8(0)?; // snapin_prologue_unknown
-                    snapin.effect.write(
-                        &mut writer,
-                        snapin.enabled,
-                        snapin.minimized,
-                        snapin.group_id,
-                    )?;
+                    snapin.effect.write(&mut writer, snapin)?;
                     let effect_end_pos = writer.stream_position()?;
                     writer.inner.seek(SeekFrom::Start(effect_start_pos))?;
                     writer.write_u32(

@@ -7,12 +7,13 @@
 //! |---------------------|----------------|
 //! | 2.0.16              | 1002           |
 
+use crate::effect::EffectVersion;
 use std::any::Any;
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 use std::ops::RangeInclusive;
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -28,6 +29,10 @@ pub struct ChannelMixer {
 impl ChannelMixer {
     /// The minimum and maximum values for the mix levels.
     pub const MIX_RANGE: RangeInclusive<f32> = -1.0..=1.0;
+
+    pub fn default_version() -> EffectVersion {
+        1002
+    }
 }
 
 impl Default for ChannelMixer {
@@ -130,11 +135,9 @@ impl EffectWrite for ChannelMixer {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        _minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_f32(self.left_to_left)?;
         writer.write_f32(self.right_to_left)?;
         writer.write_f32(self.left_to_right)?;
@@ -143,13 +146,9 @@ impl EffectWrite for ChannelMixer {
         writer.write_u32(0)?; // channel_mixer_unknown_1
         writer.write_u32(0)?; // channel_mixer_unknown_2
 
-        writer.write_snapin_id(group_id)?;
+        writer.write_snapin_id(snapin.group_id)?;
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1002
     }
 }
 

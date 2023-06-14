@@ -12,10 +12,11 @@ use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use uom::si::f32::Frequency;
 use uom::si::frequency::hertz;
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -27,6 +28,12 @@ pub struct FormantFilter {
     pub highs: bool,
     pub x: Frequency,
     pub y: Frequency,
+}
+
+impl FormantFilter {
+    pub fn default_version() -> EffectVersion {
+        1048
+    }
 }
 
 impl Default for FormantFilter {
@@ -111,27 +118,21 @@ impl EffectWrite for FormantFilter {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_hertz(self.x)?;
         writer.write_hertz(self.y)?;
         writer.write_f32(self.q)?;
         writer.write_bool32(self.lows)?;
         writer.write_bool32(self.highs)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?; // formant_filter_unknown_1
         writer.write_u32(0)?; // formant_filter_unknown_2
-        writer.write_snapin_id(group_id)?;
+        writer.write_snapin_id(snapin.group_id)?;
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1048
     }
 }
 

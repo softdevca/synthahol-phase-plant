@@ -10,10 +10,11 @@ use std::any::Any;
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use uom::si::f32::Time;
 use uom::si::time::second;
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -24,6 +25,12 @@ pub struct TapeStop {
     pub stop_time: Time,
     pub start_time: Time,
     pub curve: f32,
+}
+
+impl TapeStop {
+    pub fn default_version() -> EffectVersion {
+        1045
+    }
 }
 
 impl Default for TapeStop {
@@ -102,29 +109,23 @@ impl EffectWrite for TapeStop {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
         writer.write_bool32(self.running)?;
         writer.write_seconds(self.start_time)?;
         writer.write_seconds(self.stop_time)?;
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_f32(self.curve)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?;
         writer.write_u32(0)?;
 
-        if self.write_version() > 1038 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version > 1038 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1034
     }
 }
 

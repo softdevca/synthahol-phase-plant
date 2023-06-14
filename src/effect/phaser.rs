@@ -3,18 +3,19 @@
 //! | Phase Plant Version | Effect Version |
 //! |---------------------|----------------|
 //! | 1.8.5 to 1.8.14     | 1037           |
-//! | 2.0.0              | 1046           |
+//! | 2.0.0               | 1046           |
 //! | 2.0.16              | 1048           |
 
 use std::any::{type_name, Any};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
+use crate::effect::EffectVersion;
 use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 
-use crate::SnapinId;
+use crate::Snapin;
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -27,6 +28,12 @@ pub struct Phaser {
     pub order: u32,
     pub spread: Ratio,
     pub mix: Ratio,
+}
+
+impl Phaser {
+    pub fn default_version() -> EffectVersion {
+        1048
+    }
 }
 
 impl Default for Phaser {
@@ -114,31 +121,25 @@ impl EffectWrite for Phaser {
     fn write<W: Write + Seek>(
         &self,
         writer: &mut PhasePlantWriter<W>,
-        enabled: bool,
-        minimized: bool,
-        group_id: Option<SnapinId>,
+        snapin: &Snapin,
     ) -> io::Result<()> {
-        writer.write_bool32(enabled)?;
+        writer.write_bool32(snapin.enabled)?;
         writer.write_u32(self.order)?;
         writer.write_hertz(self.cutoff)?;
         writer.write_ratio(self.depth)?;
         writer.write_hertz(self.rate)?;
         writer.write_ratio(self.spread)?;
         writer.write_ratio(self.mix)?;
-        writer.write_bool32(minimized)?;
+        writer.write_bool32(snapin.minimized)?;
 
         writer.write_u32(0)?;
         writer.write_u32(0)?;
 
-        if self.write_version() >= 1048 {
-            writer.write_snapin_id(group_id)?;
+        if snapin.effect_version >= 1048 {
+            writer.write_snapin_id(snapin.group_id)?;
         }
 
         Ok(())
-    }
-
-    fn write_version(&self) -> u32 {
-        1037
     }
 }
 
