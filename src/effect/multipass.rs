@@ -172,7 +172,7 @@ impl EffectRead for Multipass {
         reader.skip(20)?;
 
         trace!("multipass: lanes pos {}", reader.pos());
-        for mut lane in &mut effect.lanes {
+        for lane in &mut effect.lanes {
             reader.skip(4)?; // FIXME: Decode.
             lane.gain = reader.read_decibels_linear()?;
             lane.pan = reader.read_ratio()?;
@@ -183,7 +183,7 @@ impl EffectRead for Multipass {
             trace!("multipass: lane {lane:?}");
         }
 
-        for mut macro_control in &mut effect.macro_controls {
+        for macro_control in &mut effect.macro_controls {
             macro_control.value = reader.read_f32()?;
         }
 

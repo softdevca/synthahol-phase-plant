@@ -26,7 +26,6 @@ use crate::effect::Effect;
 use crate::generator::{Generator, GeneratorId};
 use crate::modulation::Modulation;
 use crate::modulator::{Modulator, ModulatorContainer};
-use crate::version::Version;
 
 mod decibels;
 pub mod effect;

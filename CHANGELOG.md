@@ -2,13 +2,13 @@
 
 Unreleased changes.
 
-# 0.2.2 (2036-06-13)
+# 0.2.2 (2023-10-17)
 
 * Effects now remember their effect version so the same version can be written that was read.
 * Read more Multipass.
 * Decode more modulations.
 
-# 0.2.1 (2036-06-07)
+# 0.2.1 (2023-06-07)
 
 * Successfully read more factory presets.
 * Support triggering for the envelope modulator.
