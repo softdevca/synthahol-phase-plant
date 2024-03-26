@@ -6,7 +6,7 @@ use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 use uom::si::time::{millisecond, second};
 
-use crate::effect::{Distortion, Filter};
+use crate::effect::{Distortion, Filter, NonlinearFilter};
 use crate::generator::*;
 use crate::point::{CurvePoint, CurvePointMode};
 use crate::*;
@@ -62,6 +62,7 @@ pub struct GeneratorBlock {
     pub crossfade_amount: Ratio,
     pub invert: bool,
     pub filter_effect: Filter,
+    pub nonlinear_filter_effect: NonlinearFilter,
     pub distortion_effect: Distortion,
     pub band_limit: Frequency,
 
@@ -199,6 +200,7 @@ impl Default for GeneratorBlock {
                 gain: Decibels::ZERO,
                 ..Default::default()
             },
+            nonlinear_filter_effect: Default::default(),
             mix_level: Ratio::new::<percent>(100.0),
             noise_waveform: NoiseWaveform::Colored,
             noise_slope: Decibels::new(3.0103),
@@ -468,6 +470,19 @@ impl From<&NoiseGenerator> for GeneratorBlock {
             noise_slope: generator.slope,
             stereo: generator.stereo,
             seed_mode: generator.seed_mode,
+            ..Default::default()
+        }
+    }
+}
+
+impl From<&NonlinearFilterGenerator> for GeneratorBlock {
+    fn from(generator: &NonlinearFilterGenerator) -> Self {
+        Self {
+            id: generator.id,
+            mode: generator.mode(),
+            name: generator.name(),
+            enabled: generator.enabled,
+            nonlinear_filter_effect: generator.effect.clone(),
             ..Default::default()
         }
     }

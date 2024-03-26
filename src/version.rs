@@ -31,6 +31,7 @@ pub enum PhasePlantRelease {
     V2_0_13,
     V2_0_16,
     V2_1_0,
+    V2_1_1,
 }
 
 impl PhasePlantRelease {
@@ -57,6 +58,7 @@ impl PhasePlantRelease {
             V2_0_13 => Version::new(2, 0, 13, 0),
             V2_0_16 => Version::new(2, 0, 16, 0),
             V2_1_0 => Version::new(2, 1, 0, 0),
+            V2_1_1 => Version::new(2, 1, 1, 0),
         }
     }
 
@@ -85,6 +87,7 @@ impl PhasePlantRelease {
             V2_0_13 => Version::new(6, 2, 1038, 0),
             V2_0_16 => Version::new(6, 2, 1038, 0),
             V2_1_0 => Version::new(6, 2, 1040, 0),
+            V2_1_1 => Version::new(6, 2, 1042, 0),
         }
     }
 

@@ -1,6 +1,8 @@
-# TBD
+# 0.3.0
 
-Unreleased changes.
+* Partial support the Nonlinear Filter Generator added in Phase Plant 2.1.1.
+* Added support for Phase Plant 2.1.3.
+* Detect Phase Plant 2.2 presets with their new format.
 
 # 0.2.2 (2023-10-17)
 

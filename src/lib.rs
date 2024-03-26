@@ -282,7 +282,7 @@ pub(crate) mod test {
     use crate::tests::test_data_path;
     use crate::*;
 
-    fn load_preset(components: &[&str]) -> io::Result<Preset> {
+    pub(crate) fn load_preset(components: &[&str]) -> io::Result<Preset> {
         let mut path = test_data_path(&[]);
         if !path.exists() {
             panic!("Phase Plant test data path does not exist: {path:?}");

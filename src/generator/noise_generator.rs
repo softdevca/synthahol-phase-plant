@@ -117,8 +117,8 @@ impl Generator for NoiseGenerator {
 
 impl dyn Generator {
     #[must_use]
-    pub fn as_noise(&self) -> Option<&NoiseGenerator> {
-        self.downcast_ref::<NoiseGenerator>()
+    pub fn as_nonlinear_filter_generator(&self) -> Option<&NonlinearFilterGenerator> {
+        self.downcast_ref::<NonlinearFilterGenerator>()
     }
 }
 

@@ -39,7 +39,7 @@ pub enum NonlinearFilterMode {
 }
 
 impl NonlinearFilterMode {
-    fn from_id(id: u32) -> Result<Self, Error> {
+    pub(crate) fn from_id(id: u32) -> Result<Self, Error> {
         Self::from_repr(id).ok_or_else(|| {
             Error::new(
                 ErrorKind::InvalidData,
@@ -265,7 +265,7 @@ mod test {
 
         let preset = read_effect_preset(
             "nonlinear_filter",
-            "nonlinear_filter-highpass-q1.2-tubular-1.8.16.phaseplant",
+            "nonlinear_filter-high_pass-q1.2-tubular-1.8.16.phaseplant",
         )
         .unwrap();
         let snapin = &preset.lanes[0].snapins[0];
@@ -317,16 +317,17 @@ mod test {
 
     #[test]
     fn parts_version_2() {
-        let preset = read_effect_preset(
-            "nonlinear_filter",
-            "nonlinear_filter-bandpass-20hz-2.0.16.phaseplant",
-        )
-        .unwrap();
-        let snapin = &preset.lanes[0].snapins[0];
-        assert!(snapin.enabled);
-        assert!(!snapin.minimized);
-        let effect = snapin.effect.as_nonlinear_filter().unwrap();
-        assert_eq!(effect.filter_mode, FilterMode::BandPass);
-        assert_eq!(effect.cutoff.get::<hertz>(), 20.0);
+        for file in &[
+            "nonlinear_filter-band_pass-20hz-2.0.16.phaseplant",
+            "nonlinear_filter-band_pass-20hz-2.1.3.phaseplant",
+        ] {
+            let preset = read_effect_preset("nonlinear_filter", file).unwrap();
+            let snapin = &preset.lanes[0].snapins[0];
+            assert!(snapin.enabled);
+            assert!(!snapin.minimized);
+            let effect = snapin.effect.as_nonlinear_filter().unwrap();
+            assert_eq!(effect.filter_mode, FilterMode::BandPass);
+            assert_eq!(effect.cutoff.get::<hertz>(), 20.0);
+        }
     }
 }

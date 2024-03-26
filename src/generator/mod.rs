@@ -16,6 +16,7 @@ pub use granular_generator::*;
 pub use group::*;
 pub use mix_routing::*;
 pub use noise_generator::*;
+pub use nonlinear_filter_generator::*;
 pub use sample_player::*;
 pub use wavetable_oscillator::*;
 
@@ -32,6 +33,7 @@ mod granular_generator;
 mod group;
 mod mix_routing;
 mod noise_generator;
+mod nonlinear_filter_generator;
 mod sample_player;
 mod wavetable_oscillator;
 
@@ -132,6 +134,7 @@ pub enum GeneratorMode {
     GranularGenerator = 12,
     Group = 1,
     MixRouting = 9,
+    NonlinearFilterGenerator = 13,
     NoiseGenerator = 3,
     #[doc(alias = "Sampler")]
     SamplePlayer = 4,
@@ -166,6 +169,7 @@ impl GeneratorMode {
             Group => "Group",
             MixRouting => "Mix",
             NoiseGenerator => "Noise",
+            NonlinearFilterGenerator => "Nonlinear Filter",
             SamplePlayer => "Sampler",
             WavetableOscillator => "Wavetable",
         }

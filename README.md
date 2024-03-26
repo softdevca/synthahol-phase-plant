@@ -11,6 +11,11 @@ synthesizer.
 [![Workflows][workflows-badge]][workflows]
 </div>
 
+## NOTE
+
+The preset file format changed in version 2.2 of Phase Plant. The format is now a JSON inside a ZIP container
+and is no longer a binary blob. This library does not support the new format.
+
 ## Overview
 
 synthahol-phase-plant is a library to read and write presets for the

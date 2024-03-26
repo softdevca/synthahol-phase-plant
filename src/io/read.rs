@@ -44,6 +44,13 @@ impl<T: Read + Seek> PhasePlantReader<T> {
         };
 
         let format_major = reader.read_u32()?;
+        if format_major == 0x504b0304 {
+            // ZIP header
+            return Err(Error::other(
+                "Version 2.2 and later presets are not supported",
+            ));
+        }
+
         let format_patch = reader.read_u32()?;
         let format_minor = reader.read_u32()?;
         reader.format_version = Version::new(format_major, format_minor, format_patch, 0);
@@ -1099,6 +1106,20 @@ impl Preset {
             }
         }
 
+        if reader.is_release_at_least(PhasePlantRelease::V2_1_1) {
+            reader.skip(640)?;
+            // FIXME: hard coded effect version
+            // block.nonlinear_filter_effect = block.nonlinear_filter_effect.read(&mut reader, 1000);
+            // let read_return = NonlinearFilter::read(&mut reader, 1000)?;
+            // block.nonlinear_filter_effect = read_return.effect.as_nonlinear_filter().expect(GeneratorMode::NonlinearFilterGenerator.name()).clone();
+            // FIXME: Enabled/ minimized
+            // block.nonlinear_filter_effect.filter_mode = FilterMode::from_id(reader.read_u32()?)?;
+            // block.nonlinear_filter_effect.mode = NonlinearFilterMode::from_id(reader.read_u32()?)?;
+            // block.nonlinear_filter_effect.cutoff = reader.read_hertz()?;
+            // block.nonlinear_filter_effect.q = reader.read_f32()?;
+            // block.nonlinear_filter_effect.drive = reader.read_f32()?;
+        }
+
         //
         // Lanes
         //
@@ -1570,6 +1591,9 @@ impl Preset {
                 GeneratorMode::Group => Box::new(generator::Group::from(block)),
                 GeneratorMode::MixRouting => Box::new(MixRouting::from(block)),
                 GeneratorMode::NoiseGenerator => Box::new(NoiseGenerator::from(block)),
+                GeneratorMode::NonlinearFilterGenerator => {
+                    Box::new(NonlinearFilterGenerator::from(block))
+                }
                 GeneratorMode::SamplePlayer => Box::new(SamplePlayer::from(block)),
                 GeneratorMode::WavetableOscillator => Box::new(WavetableOscillator::from(block)),
             };
@@ -1620,7 +1644,7 @@ mod test {
         assert_relative_eq!(preset.glide_time, 0.042);
     }
 
-    /// Test all of the presets in the init directory. They must have the file
+    /// Test all the presets in the init directory. They must have the file
     /// name `init-#.#.#.phaseplant`.
     #[test]
     fn init() {
@@ -1635,6 +1659,16 @@ mod test {
             if !dir_entry.file_type().unwrap().is_dir()
                 && path.extension().unwrap_or_default() == "phaseplant"
             {
+                // Skip unsupported versions presets.
+                if path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .starts_with("init-2.2")
+                {
+                    continue;
+                }
+
                 let mut preset = read_preset("init", &path.file_name().unwrap().to_string_lossy());
                 let metadata = &preset.metadata;
                 assert!(metadata.description.is_none());
@@ -1874,5 +1908,11 @@ mod test {
             let preset = read_preset("unison", &file_name);
             assert_eq!(preset.unison.mode, *mode);
         }
+    }
+
+    #[test]
+    fn unsupported() {
+        let path = test_data_path(&["init", "init-2.2.0.phaseplant"]);
+        assert!(Preset::read_file(&path).is_err());
     }
 }

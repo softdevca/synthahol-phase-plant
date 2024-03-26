@@ -1,93 +1,43 @@
-//! [Noise Generator](https://kilohearts.com/docs/phase_plant/#noise_generator)
-//! can create enharmonic sounds.
+//! Nonlinear Filter Generator is the [nonlinear filter](NonlinearFilter), but in the
+//! generator section.
+//!
+//! The generator was added in Phase Plant 2.1.1
 
 use std::any::Any;
 
-use strum_macros::Display;
-use uom::si::f32::Frequency;
+use crate::effect::NonlinearFilter;
 
 use super::*;
 
-#[derive(Copy, Clone, Debug, Display, Eq, FromRepr, PartialEq)]
-#[repr(u32)]
-pub enum NoiseWaveform {
-    // The discriminants correspond to the file format.
-    Colored = 0,
-    KeytrackedStepped = 1,
-    KeytrackedSmooth = 2,
+#[derive(Clone, Debug, PartialEq)]
+pub struct NonlinearFilterGenerator {
+    pub id: GeneratorId,
+    pub enabled: bool,
+    pub name: String,
+    pub effect: NonlinearFilter,
 }
 
-impl NoiseWaveform {
-    pub(crate) fn from_id(id: u32) -> Result<Self, Error> {
-        Self::from_repr(id).ok_or_else(|| {
-            Error::new(
-                ErrorKind::InvalidData,
-                format!("Unknown noise waveform {id}"),
-            )
+impl Default for NonlinearFilterGenerator {
+    fn default() -> Self {
+        Self::from(&GeneratorBlock {
+            name: GeneratorMode::NonlinearFilterGenerator.name().to_owned(),
+            ..Default::default()
         })
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct NoiseGenerator {
-    pub id: GeneratorId,
-    pub enabled: bool,
-    pub name: String,
-
-    #[doc(alias = "find_tuning")]
-    pub semi_cent: f32,
-
-    pub harmonic: f32,
-    pub shift: Frequency,
-    pub phase_offset: Ratio,
-    pub phase_jitter: Ratio,
-    pub level: Ratio,
-    pub waveform: NoiseWaveform,
-
-    /// Decibels per octave
-    pub slope: Decibels,
-
-    pub stereo: Ratio,
-
-    pub seed_mode: SeedMode,
-}
-
-impl NoiseGenerator {
-    /// Slope setting for white noise.
-    pub const SLOPE_WHITE_NOISE: f32 = 0.0;
-}
-
-impl Default for NoiseGenerator {
-    fn default() -> Self {
-        Self {
-            name: GeneratorMode::NoiseGenerator.name().to_owned(),
-            harmonic: 4.0, // Other generators use 1.0 as a default
-            ..Self::from(&GeneratorBlock::default())
-        }
-    }
-}
-
-impl From<&GeneratorBlock> for NoiseGenerator {
+impl From<&GeneratorBlock> for NonlinearFilterGenerator {
     fn from(block: &GeneratorBlock) -> Self {
-        NoiseGenerator {
+        NonlinearFilterGenerator {
             id: block.id,
             enabled: block.enabled,
             name: block.name.to_owned(),
-            semi_cent: block.fine_tuning,
-            harmonic: block.harmonic,
-            shift: block.shift,
-            phase_offset: block.phase_offset,
-            phase_jitter: block.phase_jitter,
-            level: block.level,
-            waveform: block.noise_waveform,
-            slope: block.noise_slope,
-            stereo: block.stereo,
-            seed_mode: block.seed_mode,
+            effect: block.nonlinear_filter_effect.clone(),
         }
     }
 }
 
-impl Generator for NoiseGenerator {
+impl Generator for NonlinearFilterGenerator {
     fn id(&self) -> Option<GeneratorId> {
         Some(self.id)
     }
@@ -107,7 +57,7 @@ impl Generator for NoiseGenerator {
     }
 
     fn mode(&self) -> GeneratorMode {
-        GeneratorMode::NoiseGenerator
+        GeneratorMode::NonlinearFilterGenerator
     }
 
     fn name(&self) -> String {
@@ -117,106 +67,76 @@ impl Generator for NoiseGenerator {
 
 impl dyn Generator {
     #[must_use]
-    pub fn as_noise(&self) -> Option<&NoiseGenerator> {
-        self.downcast_ref::<NoiseGenerator>()
+    pub fn as_nonlinear_filter(&self) -> Option<&NonlinearFilterGenerator> {
+        self.downcast_ref::<NonlinearFilterGenerator>()
     }
 }
 
 #[cfg(test)]
 mod test {
-    use approx::assert_relative_eq;
-    use uom::si::f32::Frequency;
-
-    use crate::test::read_generator_preset;
-
     use super::*;
-
-    #[test]
-    fn disabled() {
-        let preset = read_generator_preset(
-            "noise_generator",
-            "noise_generator-disabled-1.8.16.phaseplant",
-        )
-        .unwrap();
-        let generator: &NoiseGenerator = preset.generator(1).unwrap();
-        assert!(!generator.enabled);
-    }
+    use crate::effect::{FilterMode, NonlinearFilterMode};
+    use crate::test::read_generator_preset;
+    use uom::si::f32::Frequency;
+    use uom::si::frequency::hertz;
 
     #[test]
     fn init() {
-        for file in &[
-            "noise_generator-1.7.0.phaseplant",
-            "noise_generator-1.8.0.phaseplant",
-            "noise_generator-1.8.13.phaseplant",
-            "noise_generator-2.1.0.phaseplant",
-        ] {
-            let preset = read_generator_preset("noise_generator", file).unwrap();
-            let generator: &NoiseGenerator = preset.generator(1).unwrap();
+        for file in &["nonlinear_filter_generator-2.1.1.phaseplant"] {
+            let preset = read_generator_preset("nonlinear_filter_generator", file).unwrap();
+            let generator: &NonlinearFilterGenerator = preset.generator(1).unwrap();
             assert!(generator.enabled);
-            assert_eq!(generator.name(), "Noise".to_owned());
-            assert_eq!(generator.waveform, NoiseWaveform::Colored);
-            assert_eq!(generator.level.get::<percent>(), 100.0);
-            assert_eq!(generator.semi_cent, 0.0);
-            assert_eq!(generator.harmonic, 4.0);
-            assert_eq!(generator.shift, Frequency::zero());
-            assert_eq!(generator.phase_offset, Ratio::zero());
-            assert_eq!(generator.phase_jitter, Ratio::zero());
-            assert_relative_eq!(generator.slope.db(), 3.0103, epsilon = 0.0001); // 3.0 db/Oct
-            assert_eq!(generator.stereo.get::<percent>(), 0.0);
-            assert_eq!(generator.seed_mode, SeedMode::Stable);
+            assert_eq!(generator.name(), "Nonlinear Filter".to_owned());
+            let effect = &generator.effect;
+            assert_eq!(effect, &Default::default());
         }
     }
 
+    #[ignore]
     #[test]
-    fn parts_version_1() {
+    fn parts() {
         let preset = read_generator_preset(
-            "noise_generator",
-            "noise_generator-lane3-stereo15-1.8.16.phaseplant",
+            "nonlinear_filter_generator",
+            "nonlinear_filter_generator-all_pass-disabled-2.1.3.phaseplant",
         )
         .unwrap();
-        let generator: &NoiseGenerator = preset.generator(1).unwrap();
+        let generator: &NonlinearFilterGenerator = preset.generator(1).unwrap();
+        assert!(!generator.enabled);
+        // let effect = &generator.effect;
+        // FIXME: All pass mode
+        // assert_eq!(effect.filter_mode, FilterMode::A)
+
+        let preset = read_generator_preset(
+            "nonlinear_filter_generator",
+            "nonlinear_filter_generator-band_pass-q1.5-warm-2.1.3.phaseplant",
+        )
+        .unwrap();
+        let generator: &NonlinearFilterGenerator = preset.generator(1).unwrap();
         assert!(generator.enabled);
-        assert_relative_eq!(generator.stereo.get::<percent>(), 15.0);
+        let effect = &generator.effect;
+        assert_eq!(effect.filter_mode, FilterMode::BandPass);
+        assert_eq!(effect.mode, NonlinearFilterMode::Warm);
+        assert_eq!(effect.q, 1.5);
 
         let preset = read_generator_preset(
-            "noise_generator",
-            "noise_generator-stepped-slope2db_oct-stereo25-random-1.8.16.phaseplant",
+            "nonlinear_filter_generator",
+            "nonlinear_filter_generator-high_pass-drive50-2.1.3.phaseplant",
         )
         .unwrap();
-        let generator: &NoiseGenerator = preset.generator(1).unwrap();
-        assert_eq!(generator.waveform, NoiseWaveform::KeytrackedStepped);
-        assert_relative_eq!(generator.slope.db(), 2.0);
-        assert_relative_eq!(generator.stereo.get::<percent>(), 25.0);
-        assert_eq!(generator.seed_mode, SeedMode::Random);
-    }
-
-    #[test]
-    fn parts_version_2() {
-        let preset = read_generator_preset(
-            "noise_generator",
-            "noise_generator-seed_random-2.1.0.phaseplant",
-        )
-        .unwrap();
-        let generator: &NoiseGenerator = preset.generator(1).unwrap();
-        assert_eq!(generator.seed_mode, SeedMode::Random);
+        let generator: &NonlinearFilterGenerator = preset.generator(1).unwrap();
+        assert!(generator.enabled);
+        let effect = &generator.effect;
+        assert_eq!(effect.filter_mode, FilterMode::HighPass);
+        assert_eq!(effect.drive, 0.5);
 
         let preset = read_generator_preset(
-            "noise_generator",
-            "noise_generator-waveform_smooth-2.1.0.phaseplant",
+            "nonlinear_filter_generator",
+            "nonlinear_filter_generator-notch-cutoff1000-2.1.3.phaseplant",
         )
         .unwrap();
-        let generator: &NoiseGenerator = preset.generator(1).unwrap();
-        assert_eq!(generator.waveform, NoiseWaveform::KeytrackedSmooth);
-    }
-
-    #[test]
-    fn pitch() {
-        let preset = read_generator_preset(
-            "noise_generator",
-            "noise_generator-pitch23-1.8.16.phaseplant",
-        )
-        .unwrap();
-        let generator: &NoiseGenerator = preset.generator(1).unwrap();
-        assert_eq!(generator.semi_cent, 23.0);
+        let generator: &NonlinearFilterGenerator = preset.generator(1).unwrap();
+        let effect = &generator.effect;
+        assert_eq!(effect.filter_mode, FilterMode::Notch);
+        assert_eq!(effect.cutoff, Frequency::new::<hertz>(1000.0));
     }
 }
