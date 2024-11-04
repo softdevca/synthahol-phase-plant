@@ -207,15 +207,15 @@ mod test {
         )
         .unwrap();
         let _generator: &WavetableOscillator = preset.generator(1).unwrap();
-	/*
-        {
-            // FIXME: Disabled until data blocks figured out.  BrassEdited
-            assert_eq!(
-                generator.wavetable_path,
-                Some("factory/Morphs/Saw to Sine.flac".to_owned())
-            );
-        }
-	*/
+        /*
+            {
+                // FIXME: Disabled until data blocks figured out.  BrassEdited
+                assert_eq!(
+                    generator.wavetable_path,
+                    Some("factory/Morphs/Saw to Sine.flac".to_owned())
+                );
+            }
+        */
 
         let preset = read_generator_preset(
             "wavetable_oscillator",

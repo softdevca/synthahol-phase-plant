@@ -351,36 +351,36 @@ pub(crate) mod test {
                     .map(|s| s.to_string_lossy().to_string());
 
                 // Temporarily write out the preset.
-		/*
-                {
-                    write_cursor.seek(SeekFrom::Start(0)).unwrap();
-                    let filename = format!(
-                        "test-{}-{}.phaseplant",
-                        name_str.clone().unwrap_or_default(),
-                        uuid::Uuid::new_v4()
-                    );
-                    let path = std::env::temp_dir().join(&filename);
-                    let mut file = File::create(&path).expect("Create file");
-                    let mut out = Vec::with_capacity(write_cursor.position() as usize);
-                    write_cursor.seek(SeekFrom::Start(0)).unwrap();
-                    write_cursor.read_to_end(&mut out).unwrap();
-                    file.write_all(&out).unwrap();
-                    println!("Test preset written to {}", path.to_string_lossy());
-                }
-		*/
+                /*
+                        {
+                            write_cursor.seek(SeekFrom::Start(0)).unwrap();
+                            let filename = format!(
+                                "test-{}-{}.phaseplant",
+                                name_str.clone().unwrap_or_default(),
+                                uuid::Uuid::new_v4()
+                            );
+                            let path = std::env::temp_dir().join(&filename);
+                            let mut file = File::create(&path).expect("Create file");
+                            let mut out = Vec::with_capacity(write_cursor.position() as usize);
+                            write_cursor.seek(SeekFrom::Start(0)).unwrap();
+                            write_cursor.read_to_end(&mut out).unwrap();
+                            file.write_all(&out).unwrap();
+                            println!("Test preset written to {}", path.to_string_lossy());
+                        }
+                */
 
                 write_cursor.seek(SeekFrom::Start(0)).unwrap();
 
-		/*
-                {
-                    let mut file = File::create("/tmp/reload.phaseplant").expect("Create file");
-                    let mut out = Vec::with_capacity(write_cursor.position() as usize);
-                    write_cursor.seek(SeekFrom::Start(0)).unwrap();
-                    write_cursor.read_to_end(&mut out).unwrap();
-                    file.write_all(&out).unwrap();
-                    panic!("Debug file written to {file:?}");
-                }
-		*/
+                /*
+                        {
+                            let mut file = File::create("/tmp/reload.phaseplant").expect("Create file");
+                            let mut out = Vec::with_capacity(write_cursor.position() as usize);
+                            write_cursor.seek(SeekFrom::Start(0)).unwrap();
+                            write_cursor.read_to_end(&mut out).unwrap();
+                            file.write_all(&out).unwrap();
+                            panic!("Debug file written to {file:?}");
+                        }
+                */
 
                 match Preset::read(&mut write_cursor, name_str) {
                     Ok(written) => {
