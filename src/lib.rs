@@ -351,7 +351,7 @@ pub(crate) mod test {
                     .map(|s| s.to_string_lossy().to_string());
 
                 // Temporarily write out the preset.
-                #[cfg(disabled)]
+		/*
                 {
                     write_cursor.seek(SeekFrom::Start(0)).unwrap();
                     let filename = format!(
@@ -367,10 +367,11 @@ pub(crate) mod test {
                     file.write_all(&out).unwrap();
                     println!("Test preset written to {}", path.to_string_lossy());
                 }
+		*/
 
                 write_cursor.seek(SeekFrom::Start(0)).unwrap();
 
-                #[cfg(disabled)]
+		/*
                 {
                     let mut file = File::create("/tmp/reload.phaseplant").expect("Create file");
                     let mut out = Vec::with_capacity(write_cursor.position() as usize);
@@ -379,6 +380,7 @@ pub(crate) mod test {
                     file.write_all(&out).unwrap();
                     panic!("Debug file written to {file:?}");
                 }
+		*/
 
                 match Preset::read(&mut write_cursor, name_str) {
                     Ok(written) => {

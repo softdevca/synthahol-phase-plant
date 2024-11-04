@@ -1097,7 +1097,8 @@ mod test {
     }
 }
 
-#[cfg(disabled)]
+// Disable all of the tests.
+#[cfg(not(test))]
 #[cfg(test)]
 mod test {
     /// Mod wheel to various parts of two envelope output generators.
