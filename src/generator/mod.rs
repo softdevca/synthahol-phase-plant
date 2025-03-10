@@ -2,7 +2,7 @@
 
 use std::any::Any;
 
-use downcast_rs::{impl_downcast, Downcast};
+use downcast_rs::{Downcast, impl_downcast};
 use strum_macros::Display;
 
 pub use analog_oscillator::*;
@@ -213,7 +213,7 @@ mod test {
         let generator_names = preset
             .generators
             .iter()
-            .map(|gen| gen.name())
+            .map(|generator| generator.name())
             .collect::<Vec<String>>();
         assert_eq!(
             generator_names,

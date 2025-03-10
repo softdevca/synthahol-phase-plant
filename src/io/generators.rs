@@ -260,36 +260,36 @@ impl Default for GeneratorBlock {
 //
 
 impl From<&AnalogOscillator> for GeneratorBlock {
-    fn from(gen: &AnalogOscillator) -> Self {
+    fn from(generator: &AnalogOscillator) -> Self {
         Self {
-            id: gen.id,
-            name: gen.name(),
-            mode: gen.mode(),
-            enabled: gen.enabled,
-            fine_tuning: gen.tuning,
-            harmonic: gen.harmonic,
-            shift: gen.shift,
-            phase_offset: gen.phase_offset,
-            phase_jitter: gen.phase_jitter,
-            level: gen.level,
-            pulse_width: gen.pulse_width,
-            sync_multiplier: gen.sync_multiplier,
-            unison: gen.unison,
-            analog_waveform: gen.waveform,
+            id: generator.id,
+            name: generator.name(),
+            mode: generator.mode(),
+            enabled: generator.enabled,
+            fine_tuning: generator.tuning,
+            harmonic: generator.harmonic,
+            shift: generator.shift,
+            phase_offset: generator.phase_offset,
+            phase_jitter: generator.phase_jitter,
+            level: generator.level,
+            pulse_width: generator.pulse_width,
+            sync_multiplier: generator.sync_multiplier,
+            unison: generator.unison,
+            analog_waveform: generator.waveform,
             ..Default::default()
         }
     }
 }
 
 impl From<&AuxRouting> for GeneratorBlock {
-    fn from(gen: &AuxRouting) -> Self {
+    fn from(generator: &AuxRouting) -> Self {
         Self {
-            id: gen.id,
-            name: gen.name(),
-            mode: gen.mode(),
-            enabled: gen.enabled,
-            invert: gen.invert,
-            mix_level: gen.level,
+            id: generator.id,
+            name: generator.name(),
+            mode: generator.mode(),
+            enabled: generator.enabled,
+            invert: generator.invert,
+            mix_level: generator.level,
             ..Default::default()
         }
     }
@@ -389,37 +389,37 @@ impl From<&FilterEffect> for GeneratorBlock {
 }
 
 impl From<&GranularGenerator> for GeneratorBlock {
-    fn from(gen: &GranularGenerator) -> Self {
+    fn from(generator: &GranularGenerator) -> Self {
         Self {
-            id: gen.id,
-            name: gen.name(),
-            mode: gen.mode(),
-            enabled: gen.enabled,
-            fine_tuning: gen.fine_tuning,
-            harmonic: gen.harmonic,
-            shift: gen.shift,
-            phase_offset: gen.phase_offset,
-            phase_jitter: gen.phase_jitter,
-            level: gen.level,
+            id: generator.id,
+            name: generator.name(),
+            mode: generator.mode(),
+            enabled: generator.enabled,
+            fine_tuning: generator.fine_tuning,
+            harmonic: generator.harmonic,
+            shift: generator.shift,
+            phase_offset: generator.phase_offset,
+            phase_jitter: generator.phase_jitter,
+            level: generator.level,
 
-            sample_contents: gen.sample_contents.clone(),
-            sample_name: gen.sample_name.clone(),
-            sample_path: gen.sample_path.clone(),
+            sample_contents: generator.sample_contents.clone(),
+            sample_name: generator.sample_name.clone(),
+            sample_path: generator.sample_path.clone(),
 
-            base_pitch: gen.base_pitch,
-            base_pitch_locked: gen.base_pitch_locked,
+            base_pitch: generator.base_pitch,
+            base_pitch_locked: generator.base_pitch_locked,
 
-            granular_position: gen.position,
-            granular_direction: gen.direction,
-            granular_envelope: gen.envelope.clone(),
-            granular_align_phases: gen.align_phases,
-            granular_grains: gen.grains,
-            granular_grain_length: gen.grain_length,
-            granular_auto_grain_length: gen.auto_grain_length,
-            granular_spawn_rate_mode: gen.spawn_rate_mode,
-            granular_randomization: gen.randomization.clone(),
-            granular_chord: gen.chord.clone(),
-            granular_warm_start: gen.warm_start,
+            granular_position: generator.position,
+            granular_direction: generator.direction,
+            granular_envelope: generator.envelope.clone(),
+            granular_align_phases: generator.align_phases,
+            granular_grains: generator.grains,
+            granular_grain_length: generator.grain_length,
+            granular_auto_grain_length: generator.auto_grain_length,
+            granular_spawn_rate_mode: generator.spawn_rate_mode,
+            granular_randomization: generator.randomization.clone(),
+            granular_chord: generator.chord.clone(),
+            granular_warm_start: generator.warm_start,
 
             ..Default::default()
         }

@@ -1,3 +1,7 @@
+# 0.3.1
+
+* Update dependencies.
+
 # 0.3.0
 
 * Partial support the Nonlinear Filter Generator added in Phase Plant 2.1.1.

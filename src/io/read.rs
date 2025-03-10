@@ -995,18 +995,18 @@ impl Preset {
                 let _unknown_block_f_4 = reader.read_f32()?;
             }
 
-            for gen in &mut gen_blocks {
-                gen.curve_edited = reader.read_bool32()?;
+            for generator in &mut gen_blocks {
+                generator.curve_edited = reader.read_bool32()?;
                 let _curve_block_unknown_1 = reader.read_bool32()?;
                 reader.expect_f32(1.0, "block_g3_3")?;
-                gen.rate.frequency = reader.read_hertz()?;
-                gen.rate.numerator = reader.read_u32()?;
-                gen.rate.denominator = NoteValue::from_id(reader.read_u32()?)?;
-                gen.rate.sync = reader.read_bool32()?;
-                gen.curve_loop_mode = LoopMode::from_id(reader.read_u32()?)?;
-                gen.curve_loop_start = reader.read_ratio()?;
-                gen.curve_loop_length = reader.read_ratio()?;
-                gen.settings_locked = reader.read_bool32()?;
+                generator.rate.frequency = reader.read_hertz()?;
+                generator.rate.numerator = reader.read_u32()?;
+                generator.rate.denominator = NoteValue::from_id(reader.read_u32()?)?;
+                generator.rate.sync = reader.read_bool32()?;
+                generator.curve_loop_mode = LoopMode::from_id(reader.read_u32()?)?;
+                generator.curve_loop_start = reader.read_ratio()?;
+                generator.curve_loop_length = reader.read_ratio()?;
+                generator.settings_locked = reader.read_bool32()?;
             }
 
             for mod_block in &mut mod_blocks {
@@ -1017,8 +1017,8 @@ impl Preset {
                 let _lfo_table_time = reader.read_seconds()?;
             }
 
-            for gen in &mut gen_blocks {
-                gen.curve_length = reader.read_seconds()?;
+            for generator in &mut gen_blocks {
+                generator.curve_length = reader.read_seconds()?;
             }
 
             for mod_block in &mut mod_blocks {
@@ -1031,8 +1031,8 @@ impl Preset {
                 }
             }
 
-            for gen in &mut gen_blocks {
-                gen.output_enabled = reader.read_bool32()?;
+            for generator in &mut gen_blocks {
+                generator.output_enabled = reader.read_bool32()?;
             }
         }
 
@@ -1052,35 +1052,35 @@ impl Preset {
         // Granular generator
         if reader.is_version_at_least_2_1() {
             trace!("granular: pos {}", reader.pos());
-            for gen in &mut gen_blocks {
+            for generator in &mut gen_blocks {
                 let start_pos = reader.stream_position()?;
-                gen.granular_position = reader.read_ratio()?;
-                gen.granular_direction = GranularDirection::from_id(reader.read_u32()?)?;
-                gen.granular_grains = reader.read_f32()?;
+                generator.granular_position = reader.read_ratio()?;
+                generator.granular_direction = GranularDirection::from_id(reader.read_u32()?)?;
+                generator.granular_grains = reader.read_f32()?;
 
                 // Randomization
-                gen.granular_randomization.position = reader.read_ratio()?;
-                gen.granular_randomization.timing = reader.read_ratio()?;
-                gen.granular_randomization.pitch = reader.read_hertz()?;
-                gen.granular_randomization.pan = reader.read_ratio()?;
-                gen.granular_randomization.level = reader.read_ratio()?;
-                gen.granular_randomization.reverse = reader.read_ratio()?;
+                generator.granular_randomization.position = reader.read_ratio()?;
+                generator.granular_randomization.timing = reader.read_ratio()?;
+                generator.granular_randomization.pitch = reader.read_hertz()?;
+                generator.granular_randomization.pan = reader.read_ratio()?;
+                generator.granular_randomization.level = reader.read_ratio()?;
+                generator.granular_randomization.reverse = reader.read_ratio()?;
 
-                gen.granular_align_phases = reader.read_bool32()?;
-                gen.granular_warm_start = reader.read_bool32()?;
-                gen.granular_auto_grain_length = reader.read_bool32()?;
+                generator.granular_align_phases = reader.read_bool32()?;
+                generator.granular_warm_start = reader.read_bool32()?;
+                generator.granular_auto_grain_length = reader.read_bool32()?;
 
-                gen.granular_envelope = GranularEnvelope {
+                generator.granular_envelope = GranularEnvelope {
                     attack_time: reader.read_ratio()?,
                     attack_curve: reader.read_f32()?,
                     decay_time: reader.read_ratio()?,
                     decay_curve: reader.read_f32()?,
                 };
 
-                gen.granular_grain_length = reader.read_seconds()?;
-                gen.granular_chord.enabled = reader.read_bool32()?;
-                gen.granular_chord.range_octaves = reader.read_f32()?;
-                gen.granular_chord.mode = GranularChordMode::from_id(reader.read_u32()?)?;
+                generator.granular_grain_length = reader.read_seconds()?;
+                generator.granular_chord.enabled = reader.read_bool32()?;
+                generator.granular_chord.range_octaves = reader.read_f32()?;
+                generator.granular_chord.mode = GranularChordMode::from_id(reader.read_u32()?)?;
 
                 let read_length = reader.stream_position()? - start_pos;
                 if read_length != 80 {
@@ -1330,9 +1330,9 @@ impl Preset {
         }
 
         if reader.is_version_at_least_2_0() {
-            for gen in &mut gen_blocks {
-                gen.curve_name = reader.read_string_and_length()?;
-                gen.curve_path = reader.read_string_and_length()?;
+            for generator in &mut gen_blocks {
+                generator.curve_name = reader.read_string_and_length()?;
+                generator.curve_path = reader.read_string_and_length()?;
             }
         }
 
@@ -1370,7 +1370,7 @@ impl Preset {
 
         trace!(
             "data block: generators {:?}, pos {}",
-            gen_blocks.iter().map(|gen| gen.mode).collect::<Vec<_>>(),
+            gen_blocks.iter().map(|generator| generator.mode).collect::<Vec<_>>(),
             reader.pos()
         );
         for (gen_index, gen_block) in gen_blocks.iter_mut().enumerate() {
@@ -1497,16 +1497,16 @@ impl Preset {
                 "modulator: curve output data block position {}",
                 reader.pos()
             );
-            for gen in &mut gen_blocks {
+            for generator in &mut gen_blocks {
                 let start_pos = reader.stream_position()?;
-                if gen.mode != GeneratorMode::Blank {
+                if generator.mode != GeneratorMode::Blank {
                     trace!("data block: curve_output: start pos {start_pos}");
                 }
 
                 let header = reader.read_block_header()?;
                 let expected_end_pos = start_pos as usize + header.data_length_with_header();
                 if header.is_used {
-                    gen.read_data_block(&mut reader)?;
+                    generator.read_data_block(&mut reader)?;
                 }
 
                 let remaining = expected_end_pos as i64 - reader.stream_position()? as i64;

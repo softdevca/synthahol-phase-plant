@@ -2,8 +2,8 @@
 
 [package]
 name = "synthahol-phase-plant"
-version = "0.3.0"
-edition = "2021"
+version = "0.3.1"
+edition = "2024"
 authors = ["Sheldon Young <sheldon@softdev.ca>"]
 description = "Read and write Phase Plant presets"
 license = "MIT OR Apache-2.0"
@@ -14,15 +14,15 @@ publish = true
 
 [dependencies]
 byteorder = "1.5"
-downcast-rs = "1.2"
-log = "0.4"
-music-note = "0.3"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-strum = "0.26"
-strum_macros = "0.26"
-uom = { version = "0.36", default-features = false, features = ["f32", "f64", "si", "std"] }
-uuid = { version = "1.8", features = ["v4"], default-features = false }
+downcast-rs = "2.0"
+log = "0.4.2"
+music-note = "0.3.1"
+serde = { version = "1.0.216", features = ["derive"] }
+serde_json = "1.0.134"
+strum = "0.27"
+strum_macros = "0.27"
+uom = { version = "0.36.0", default-features = false, features = ["f32", "f64", "si", "std"] }
+uuid = { version = "1.15", features = ["v4"], default-features = false }
 
 [dev-dependencies]
-approx = "0.5"
+approx = "0.5.1"

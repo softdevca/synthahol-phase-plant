@@ -909,7 +909,7 @@ impl Preset {
             "data block: generators {:?}, pos {}",
             self.generators
                 .iter()
-                .map(|gen| gen.name())
+                .map(|generator| generator.name())
                 .collect::<Vec<String>>(),
             writer.pos_text()
         );
