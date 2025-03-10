@@ -1,9 +1,9 @@
 //! Snapins are containers for effects.
 
+use crate::Metadata;
 use crate::effect::{Effect, EffectVersion, Filter};
 use crate::io::WRITE_SAME_AS;
 use crate::version::Version;
-use crate::Metadata;
 
 pub type SnapinId = u16;
 

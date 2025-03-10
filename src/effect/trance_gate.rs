@@ -6,7 +6,7 @@
 //! | 1.8.14              | 1038           |
 //! | 2.0.16              | 1049           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -257,9 +257,7 @@ impl dyn Effect {
 
 impl Effect for TranceGate {
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> EffectMode {
@@ -502,10 +500,12 @@ mod test {
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_trance_gate().unwrap();
         assert_eq!(effect.resolution, PatternResolution::Sixteenth);
-        assert!(effect
-            .step_count
-            .into_iter()
-            .all(|c| c == TranceGate::STEPS_MAX));
+        assert!(
+            effect
+                .step_count
+                .into_iter()
+                .all(|c| c == TranceGate::STEPS_MAX)
+        );
         for pattern in effect.step_enabled {
             assert!(pattern.into_iter().all(|enabled| !enabled));
         }
@@ -523,16 +523,20 @@ mod test {
         let snapin = &preset.lanes[0].snapins[0];
         let effect = snapin.effect.as_trance_gate().unwrap();
         assert_eq!(effect.resolution, PatternResolution::SixteenthTriplet);
-        assert!(effect
-            .step_count
-            .into_iter()
-            .all(|c| c == TranceGate::STEPS_MAX));
+        assert!(
+            effect
+                .step_count
+                .into_iter()
+                .all(|c| c == TranceGate::STEPS_MAX)
+        );
         for pattern in effect.step_enabled {
             assert!(pattern.into_iter().all(|enabled| enabled));
         }
-        assert!(effect.step_tied[0][..effect.step_tied[0].len() - 1]
-            .iter()
-            .all(|tied| *tied));
+        assert!(
+            effect.step_tied[0][..effect.step_tied[0].len() - 1]
+                .iter()
+                .all(|tied| *tied)
+        );
         assert!(effect.step_tied[1].into_iter().all(|tied| !tied));
     }
 }

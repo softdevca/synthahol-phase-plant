@@ -6,7 +6,7 @@
 //! | 1.8.5 to 1.8.13     | 1027           |
 //! | 2.0.16              | 1037           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -14,8 +14,8 @@ use uom::num::Zero;
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
-use crate::effect::{EffectVersion, SidechainMode};
 use crate::Snapin;
+use crate::effect::{EffectVersion, SidechainMode};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -58,9 +58,7 @@ impl dyn Effect {
 
 impl Effect for TransientShaper {
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> EffectMode {

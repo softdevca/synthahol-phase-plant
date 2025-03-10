@@ -6,7 +6,7 @@
 //! | 1.8.5 to 1.8.1.6    | 1023           |
 //! | 2.0.16              | 1034           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -15,8 +15,8 @@ use uom::si::f32::{Frequency, Ratio};
 use uom::si::frequency::hertz;
 use uom::si::ratio::percent;
 
-use crate::effect::{EffectVersion, SidechainMode};
 use crate::Snapin;
+use crate::effect::{EffectVersion, SidechainMode};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -53,9 +53,7 @@ impl dyn Effect {
 
 impl Effect for PhaseDistortion {
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> EffectMode {

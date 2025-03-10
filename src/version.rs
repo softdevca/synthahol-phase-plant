@@ -149,8 +149,8 @@ impl<T: Display + Default + PartialEq + PartialOrd> Display for Version<T> {
 
 #[cfg(test)]
 mod test {
-    use crate::version::Version;
     use crate::PhasePlantRelease;
+    use crate::version::Version;
 
     #[test]
     fn at_least() {

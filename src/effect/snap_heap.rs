@@ -8,15 +8,15 @@
 //! | 2.0.12              | 1050           |
 //! | 2.0.16 to 2.1.0     | 1051           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
 use uom::si::f32::Ratio;
 use uom::si::ratio::percent;
 
-use crate::effect::multipass::ExternalInputMode;
 use crate::effect::EffectVersion;
+use crate::effect::multipass::ExternalInputMode;
 use crate::{Decibels, MacroControl, Snapin};
 
 use super::super::io::*;
@@ -56,9 +56,7 @@ impl dyn Effect {
 
 impl Effect for SnapHeap {
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> EffectMode {

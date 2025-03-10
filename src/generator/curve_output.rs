@@ -74,9 +74,7 @@ impl Generator for CurveOutput {
     }
 
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn is_enabled(&self) -> bool {
@@ -138,7 +136,7 @@ mod test {
             );
             assert_eq!(generator.curve.len(), 49);
 
-            let first = generator.curve.get(0).unwrap();
+            let first = generator.curve.first().unwrap();
             assert!(first.is_sharp());
 
             let not_first = generator.curve.get(1).unwrap();

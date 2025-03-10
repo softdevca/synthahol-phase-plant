@@ -6,7 +6,7 @@
 //! | 1.6.9 to 1.8.13     | 1040           |
 //! | 2.0.16 to 2.1.0     | 1051           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -57,9 +57,7 @@ impl dyn Effect {
 
 impl Effect for Faturator {
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> EffectMode {

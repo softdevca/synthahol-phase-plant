@@ -54,9 +54,7 @@ impl dyn Effect {
 
 impl Effect for Limiter {
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> EffectMode {
@@ -134,9 +132,9 @@ impl EffectWrite for Limiter {
 mod test {
     use approx::assert_relative_eq;
 
+    use crate::Decibels;
     use crate::effect::Filter;
     use crate::test::read_effect_preset;
-    use crate::Decibels;
 
     use super::*;
 

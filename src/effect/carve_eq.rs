@@ -10,7 +10,7 @@
 
 // Phase Plant 1.8.14 added saving the zoom and pan settings of the view.
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -209,9 +209,7 @@ impl dyn Effect {
 
 impl Effect for CarveEq {
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> EffectMode {
@@ -572,12 +570,14 @@ mod test {
         let effect = snapin.effect.as_carve_eq().unwrap();
         assert_eq!(effect.gain.db(), 0.0);
         assert_eq!(effect.mix.get::<percent>(), 100.0);
-        assert!(snapin
-            .metadata
-            .description
-            .clone()
-            .unwrap_or_default()
-            .contains("Adds stereo effect"));
+        assert!(
+            snapin
+                .metadata
+                .description
+                .clone()
+                .unwrap_or_default()
+                .contains("Adds stereo effect")
+        );
 
         let preset =
             read_effect_preset("carve_eq", "carve_eq-stereo_comb-2.0.16.phaseplant").unwrap();
@@ -601,12 +601,14 @@ mod test {
         assert_eq!(snapin.preset_name, "Stereo Comb");
         assert_eq!(snapin.preset_path, vec!["factory", "Stereo Comb.ksge"]);
         assert!(!snapin.preset_edited);
-        assert!(snapin
-            .metadata
-            .description
-            .clone()
-            .unwrap_or_default()
-            .contains("Adds stereo effect"));
+        assert!(
+            snapin
+                .metadata
+                .description
+                .clone()
+                .unwrap_or_default()
+                .contains("Adds stereo effect")
+        );
         let effect = snapin.effect.as_carve_eq().unwrap();
         assert_eq!(effect.gain.db(), 0.0);
 

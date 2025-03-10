@@ -6,7 +6,7 @@
 //! | 2.0.0               | 1046           |
 //! | 2.0.16              | 1048           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -49,9 +49,7 @@ impl dyn Effect {
 
 impl Effect for Haas {
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> EffectMode {

@@ -47,9 +47,7 @@ impl Generator for NonlinearFilterGenerator {
     }
 
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn is_enabled(&self) -> bool {
@@ -82,7 +80,8 @@ mod test {
 
     #[test]
     fn init() {
-        for file in &["nonlinear_filter_generator-2.1.1.phaseplant"] {
+        {
+            let file = &"nonlinear_filter_generator-2.1.1.phaseplant";
             let preset = read_generator_preset("nonlinear_filter_generator", file).unwrap();
             let generator: &NonlinearFilterGenerator = preset.generator(1).unwrap();
             assert!(generator.enabled);

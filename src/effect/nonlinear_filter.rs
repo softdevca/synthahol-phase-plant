@@ -8,7 +8,7 @@
 //! | 1.8.16              | 1000           |
 //! | 2.0.16              | 1011           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -17,8 +17,8 @@ use strum_macros::FromRepr;
 use uom::si::f32::Frequency;
 use uom::si::frequency::hertz;
 
-use crate::effect::{EffectVersion, FilterMode};
 use crate::Snapin;
+use crate::effect::{EffectVersion, FilterMode};
 
 use super::super::io::*;
 use super::{Effect, EffectMode};
@@ -103,9 +103,7 @@ impl Default for NonlinearFilter {
 
 impl Effect for NonlinearFilter {
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> EffectMode {

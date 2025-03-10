@@ -10,7 +10,7 @@
 //! | 2.0.12              | 1017           |
 //! | 2.0.16 to 2.1.0     | 1018           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -81,9 +81,7 @@ impl dyn Effect {
 
 impl Effect for Convolver {
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> EffectMode {
@@ -149,7 +147,7 @@ impl EffectRead for Convolver {
                     return Err(Error::new(
                         ErrorKind::InvalidData,
                         format!("Unsupported convolver IR block mode {header_mode_id}"),
-                    ))
+                    ));
                 }
             }
         }

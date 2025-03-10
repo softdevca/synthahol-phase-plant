@@ -8,7 +8,7 @@
 //! | 1.8.13 to 1.8.16    | 1040           |
 //! | 2.0.16              | 1051           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -99,9 +99,7 @@ impl Default for Filter {
 
 impl Effect for Filter {
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> EffectMode {
@@ -191,9 +189,9 @@ impl EffectWrite for Filter {
 mod test {
     use approx::assert_relative_eq;
 
+    use crate::Decibels;
     use crate::effect::{Bitcrush, Filter};
     use crate::test::read_effect_preset;
-    use crate::Decibels;
 
     use super::*;
 

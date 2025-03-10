@@ -4,8 +4,8 @@
 
 use std::any::Any;
 
-use crate::modulator::{Modulator, ModulatorMode};
 use crate::ModulatorBlock;
+use crate::modulator::{Modulator, ModulatorMode};
 
 #[derive(Debug, Default, PartialEq)]
 pub struct Group {
@@ -18,9 +18,7 @@ impl Modulator for Group {
     }
 
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> ModulatorMode {

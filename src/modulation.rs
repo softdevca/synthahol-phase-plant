@@ -210,7 +210,7 @@ impl ModulationSource {
             parameter_id,
         } = self
         {
-            RateMode::Audio.add_id(module_id << 4 | parameter_id)
+            RateMode::Audio.add_id((module_id << 4) | parameter_id)
         } else {
             let source_id = match self {
                 AudioRate { .. } => unreachable!(),
@@ -221,7 +221,7 @@ impl ModulationSource {
             };
             RateMode::Control.add_id(source_id)
         };
-        (source_id as u32) << 16 | ModulationSource::LOCAL_CATEGORY_ID as u32
+        ((source_id as u32) << 16) | ModulationSource::LOCAL_CATEGORY_ID as u32
     }
 }
 
@@ -369,21 +369,23 @@ impl ModulationTarget {
             Host {
                 parameter: target,
                 rate_mode,
-            } => (rate_mode.add_id(target.id()) as u32) << 16 | Self::HOST_CATEGORY_ID as u32,
+            } => ((rate_mode.add_id(target.id()) as u32) << 16) | Self::HOST_CATEGORY_ID as u32,
             Modulation {
                 parameter_id: target_id,
                 rate_mode,
-            } => (rate_mode.add_id(*target_id) as u32) << 16 | Self::MODULATION_CATEGORY_ID as u32,
+            } => {
+                ((rate_mode.add_id(*target_id) as u32) << 16) | Self::MODULATION_CATEGORY_ID as u32
+            }
             Snapin {
                 snapin_id,
                 parameter_id: target_id,
                 rate_mode,
-            } => (rate_mode.add_id(*target_id) as u32) << 16 | *snapin_id as u32,
+            } => ((rate_mode.add_id(*target_id) as u32) << 16) | *snapin_id as u32,
             Unknown {
                 category_id: module_id,
                 parameter_id: target_id,
                 rate_mode,
-            } => (rate_mode.add_id(*target_id) as u32) << 16 | *module_id as u32,
+            } => ((rate_mode.add_id(*target_id) as u32) << 16) | *module_id as u32,
         }
     }
 }
@@ -644,7 +646,7 @@ mod test {
         let preset = read_preset("modulation", "mod_wheel-glide_time-65-1.8.25.phaseplant");
         assert_eq!(1, preset.modulations.len());
         assert_relative_eq!(preset.mod_wheel_value.get::<percent>(), 1.6);
-        let modulation = &preset.modulations.get(0).unwrap();
+        let modulation = &preset.modulations.first().unwrap();
         assert!(modulation.enabled);
         assert_eq!(modulation.curve, Ratio::zero());
         assert_relative_eq!(
@@ -699,7 +701,7 @@ mod test {
     #[test]
     fn master_gain() {
         let preset = read_preset("modulation", "mod_wheel-master_gain-100-1.8.25.phaseplant");
-        let modulation = &preset.modulations.get(0).unwrap();
+        let modulation = &preset.modulations.first().unwrap();
         assert_relative_eq!(modulation.amount.get::<percent>(), 100.0);
         assert_eq!(modulation.source, ModulationSource::ModWheel);
         assert_eq!(
@@ -729,7 +731,7 @@ mod test {
         }
         let preset = read_preset("modulation", "mod_wheel-macro1-50-1.8.25.phaseplant");
         assert_eq!(1, preset.modulations.len());
-        let modulation = preset.modulations.get(0).unwrap();
+        let modulation = preset.modulations.first().unwrap();
         assert_relative_eq!(preset.mod_wheel_value.get::<percent>(), 1.6);
         assert!(modulation.enabled);
         assert_eq!(modulation.curve, Ratio::zero());
@@ -745,7 +747,7 @@ mod test {
 
         let preset = read_preset("modulation", "mod_wheel-macro2--32-1.8.25.phaseplant");
         assert_relative_eq!(preset.mod_wheel_value.get::<percent>(), 1.6);
-        let modulation = preset.modulations.get(0).unwrap();
+        let modulation = preset.modulations.first().unwrap();
         assert!(modulation.enabled);
         assert_eq!(modulation.curve, Ratio::zero());
         assert_relative_eq!(
@@ -759,7 +761,7 @@ mod test {
     fn mod_wheel_macros_version_2() {
         let preset = read_preset("modulation", "mod_wheel-macro1-50-2.0.12.phaseplant");
         assert_eq!(1, preset.modulations.len());
-        let modulation = preset.modulations.get(0).unwrap();
+        let modulation = preset.modulations.first().unwrap();
         assert!(modulation.enabled);
         assert_eq!(modulation.curve, Ratio::zero());
         assert_relative_eq!(modulation.amount.get::<percent>(), 50.0);
@@ -945,8 +947,7 @@ mod test {
             ModulationTarget::MACRO_CONTROL_START..ModulationTarget::MACRO_CONTROL_END;
         let modulator_range = ModulationTarget::MODULATOR_START..ModulationTarget::MODULATOR_END;
 
-        let mut all_ranges = vec![
-            // curve_output_rate_range,
+        let mut all_ranges = [
             ("Generators", generator_range),
             // granular_range,
             ("Lanes", lane_range),
@@ -996,7 +997,7 @@ mod test {
     #[test]
     fn source_id() {
         for id in 0..=0xFFFF {
-            let id_with_module = id << 16 | 0xFFFF;
+            let id_with_module = (id << 16) | 0xFFFF;
             assert_eq!(id_with_module, ModulationSource::from(id_with_module).id());
         }
     }
@@ -1027,7 +1028,7 @@ mod test {
     #[test]
     fn target_id() {
         for id in 0..=0xFFFF {
-            let id_with_module = id << 16 | 0xFFFF;
+            let id_with_module = (id << 16) | 0xFFFF;
             assert_eq!(id_with_module, ModulationTarget::from(id_with_module).id());
         }
     }

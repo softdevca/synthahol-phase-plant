@@ -8,7 +8,7 @@
 //! | 2.0.12              | 1025           |
 //! | 2.0.16              | 1026           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
 
@@ -61,9 +61,7 @@ impl dyn Effect {
 
 impl Effect for ThreeBandEq {
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> EffectMode {
@@ -149,9 +147,9 @@ mod test {
     use uom::si::f32::Frequency;
     use uom::si::frequency::hertz;
 
+    use crate::Decibels;
     use crate::effect::Filter;
     use crate::test::read_effect_preset;
-    use crate::Decibels;
 
     use super::*;
 

@@ -69,9 +69,7 @@ impl Modulator for LfoTableModulator {
     }
 
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> ModulatorMode {
@@ -102,7 +100,7 @@ mod test {
     use uom::si::frequency::hertz;
     use uom::si::ratio::percent;
 
-    use crate::modulator::{OutputRange, GROUP_ID_NONE};
+    use crate::modulator::{GROUP_ID_NONE, OutputRange};
     use crate::test::read_modulator_preset;
 
     use super::*;

@@ -6,7 +6,7 @@
 //! | 1.8.5 to 1.8.13     | 1032           |
 //! | 2.0.16              | 1043           |
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Error, ErrorKind, Read, Seek, Write};
@@ -118,9 +118,7 @@ impl dyn Effect {
 
 impl Effect for RingMod {
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> EffectMode {

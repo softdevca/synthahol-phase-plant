@@ -10,7 +10,7 @@
 use std::any::Any;
 use std::fmt::{Display, Formatter};
 
-use downcast_rs::{impl_downcast, Downcast};
+use downcast_rs::{Downcast, impl_downcast};
 use strum_macros::FromRepr;
 
 use crate::*;

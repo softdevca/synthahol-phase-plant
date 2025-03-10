@@ -7,18 +7,18 @@ use std::io::{Error, ErrorKind, Result, Seek, SeekFrom, Write};
 use std::mem::size_of;
 
 use byteorder::{LittleEndian, WriteBytesExt};
-use log::{trace, Level};
+use log::{Level, trace};
 use serde::Serialize;
-use serde_json::ser::PrettyFormatter;
 use serde_json::Serializer;
+use serde_json::ser::PrettyFormatter;
 use uom::si::frequency::hertz;
 use uom::si::ratio::ratio;
 use uom::si::time::second;
 
 use crate::generator::{BlankGenerator, Generator, GeneratorMode, Group};
+use crate::io::MetadataJson;
 use crate::io::generators::GeneratorBlock;
 use crate::io::modulators::ModulatorBlock;
-use crate::io::MetadataJson;
 use crate::modulation::*;
 use crate::modulator::{BlankModulator, Modulator};
 use crate::text::HashTag;
@@ -326,7 +326,9 @@ impl Preset {
         if modulation_count > MODULATIONS_MAX {
             return Err(Error::new(
                 ErrorKind::InvalidData,
-                format!("Unexpected number of modulation items ({modulation_count} is more than {MODULATIONS_MAX})"),
+                format!(
+                    "Unexpected number of modulation items ({modulation_count} is more than {MODULATIONS_MAX})"
+                ),
             ));
         }
         writer.write_u32(modulation_count as u32)?;
@@ -355,10 +357,7 @@ impl Preset {
             trace!("lane {lane_index}: {lane:?}, pos {}", writer.pos_text());
             trace!(
                 "lane {lane_index}: enabled {}, gain {}, mix {:?}, destination {}",
-                lane.enabled,
-                lane.gain,
-                lane.mix,
-                lane.destination
+                lane.enabled, lane.gain, lane.mix, lane.destination
             );
             writer.write_bool32(lane.enabled)?;
             writer.write_decibels_linear(lane.gain)?;

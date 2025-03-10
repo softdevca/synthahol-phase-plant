@@ -46,9 +46,7 @@ impl Modulator for VelocityModulator {
     }
 
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> ModulatorMode {

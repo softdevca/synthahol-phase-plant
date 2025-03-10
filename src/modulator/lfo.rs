@@ -123,9 +123,7 @@ impl Modulator for LfoModulator {
     }
 
     fn box_eq(&self, other: &dyn Any) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map_or(false, |other| self == other)
+        other.downcast_ref::<Self>() == Some(self)
     }
 
     fn mode(&self) -> ModulatorMode {
@@ -147,7 +145,7 @@ mod test {
     use uom::si::ratio::percent;
 
     use crate::generator::LoopMode;
-    use crate::modulator::{OutputRange, GROUP_ID_NONE};
+    use crate::modulator::{GROUP_ID_NONE, OutputRange};
     use crate::point::CurvePoint;
     use crate::test::read_modulator_preset;
 

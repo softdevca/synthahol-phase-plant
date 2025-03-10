@@ -15,10 +15,10 @@ use uom::si::time::second;
 
 use crate::effect::*;
 use crate::generator::*;
+use crate::io::MetadataJson;
 use crate::io::generators::GeneratorBlock;
 use crate::io::modulators::*;
-use crate::io::MetadataJson;
-use crate::modulation::{ModulationSource, ModulationTarget, MODULATIONS_MAX};
+use crate::modulation::{MODULATIONS_MAX, ModulationSource, ModulationTarget};
 use crate::modulator::*;
 use crate::text::TextOptionExt;
 use crate::*;
@@ -95,7 +95,7 @@ impl<T: Read + Seek> PhasePlantReader<T> {
                     "Value {unexpected} ({unexpected:#x}) is not the excepted value of {expect:#x} for {name} at position {}",
                     self.stream_position()? - 1
                 ),
-            ))
+            )),
         }
     }
 
@@ -109,7 +109,7 @@ impl<T: Read + Seek> PhasePlantReader<T> {
                     "Value {unexpected} ({unexpected:#x}) is not the excepted value of {expect} for {name} at position {}",
                     self.stream_position()? - 4
                 ),
-            ))
+            )),
         }
     }
 
@@ -122,7 +122,7 @@ impl<T: Read + Seek> PhasePlantReader<T> {
                     "Value {unexpected} is not the excepted value of {expect} for {name} at position {}",
                     self.stream_position()? - 4
                 ),
-            ))
+            )),
         }
     }
 
@@ -131,13 +131,13 @@ impl<T: Read + Seek> PhasePlantReader<T> {
     pub(crate) fn expect_u32(&mut self, expect: u32, name: &str) -> Result<(), Error> {
         match self.read_u32()? {
             expected if expected == expect => Ok(()),
-            unexpected =>
-                Err(Error::new(
-                    ErrorKind::InvalidData,
-                    format!("Value {unexpected} ({unexpected:#x}) is not the excepted value of {expect:#x} for {name} at position {}",
-                            self.stream_position()? - 4
-                    ),
-                ))
+            unexpected => Err(Error::new(
+                ErrorKind::InvalidData,
+                format!(
+                    "Value {unexpected} ({unexpected:#x}) is not the excepted value of {expect:#x} for {name} at position {}",
+                    self.stream_position()? - 4
+                ),
+            )),
         }
     }
 
@@ -414,7 +414,9 @@ impl Preset {
             let source_id = reader.read_u32()?;
             let destination_id = reader.read_u32()?;
             let amount = Ratio::new::<percent>(reader.read_f32()? * 100.0);
-            trace!("modulation: source {source_id:#x}, destination = {destination_id:#x}, percent = {amount:?}");
+            trace!(
+                "modulation: source {source_id:#x}, destination = {destination_id:#x}, percent = {amount:?}"
+            );
 
             let source: ModulationSource = source_id.into();
             if let ModulationSource::Unknown { .. } = source {
@@ -602,7 +604,9 @@ impl Preset {
         let mod_wheel_value = reader.read_ratio()?;
         let master_pitch = reader.read_f32()?;
         let polyphony = reader.read_u32()?;
-        trace!("modulator: mod wheel value {mod_wheel_value:?}, master pitch {master_pitch}, polyphony {polyphony}");
+        trace!(
+            "modulator: mod wheel value {mod_wheel_value:?}, master pitch {master_pitch}, polyphony {polyphony}"
+        );
 
         let retrigger_enabled = reader.read_bool32()?;
 
@@ -627,7 +631,9 @@ impl Preset {
                 trace!("generator: mode {mode}, index {gen_index}, id {id}, start pos {start_pos}");
             }
             if id > GENERATORS_MAX as u32 {
-                let msg = format!("Generator {gen_index} has an ID of {id}, which is greater than {GENERATORS_MAX}");
+                let msg = format!(
+                    "Generator {gen_index} has an ID of {id}, which is greater than {GENERATORS_MAX}"
+                );
                 return Err(Error::new(ErrorKind::InvalidData, msg));
             }
             let id = id as GeneratorId;
@@ -1181,7 +1187,10 @@ impl Preset {
                 }
 
                 let effect_version = reader.read_u32()?;
-                debug!("lane snapin: slot format {slot_format_major}, host version {host_version}, effect length {effect_length}, start location {effect_start_pos}, is host {}", effect_mode.is_host());
+                debug!(
+                    "lane snapin: slot format {slot_format_major}, host version {host_version}, effect length {effect_length}, start location {effect_start_pos}, is host {}",
+                    effect_mode.is_host()
+                );
 
                 let effect_read_return = if effect_mode.is_host() {
                     let format_version_major = reader.read_u32()?;
@@ -1195,7 +1204,9 @@ impl Preset {
                     let effect_remaining = effect_length as i64
                         - (reader.stream_position()? - effect_start_pos) as i64;
                     if effect_remaining != 0 {
-                        let msg = format!("Snapin host {effect_mode} version {effect_version} had {effect_remaining} bytes remaining");
+                        let msg = format!(
+                            "Snapin host {effect_mode} version {effect_version} had {effect_remaining} bytes remaining"
+                        );
                         return Err(Error::new(ErrorKind::InvalidData, msg));
                     }
                     effect_read_return.metadata = metadata;
@@ -1214,7 +1225,9 @@ impl Preset {
                         preset_path = reader.read_path()?;
                         let _unknown = reader.read_bool8()?;
                         preset_edited = reader.read_bool32()?;
-                        trace!("lane snapin: preset path {preset_path:?}, preset edited {preset_edited}");
+                        trace!(
+                            "lane snapin: preset path {preset_path:?}, preset edited {preset_edited}"
+                        );
                     } else {
                         let _unknown = reader.read_bool8()?;
                         reader.expect_u32(0, "lane_snapin_effect_unknown_1")?;
@@ -1232,7 +1245,9 @@ impl Preset {
                 let effect_end_pos = reader.stream_position()?;
                 let remaining = effect_length as i64 - (effect_end_pos - effect_start_pos) as i64;
                 if remaining != 0 {
-                    let msg = format!("Effect {name_desc} version {effect_version} starting at {effect_start_pos} had {remaining} bytes remaining");
+                    let msg = format!(
+                        "Effect {name_desc} version {effect_version} starting at {effect_start_pos} had {remaining} bytes remaining"
+                    );
                     return Err(Error::new(ErrorKind::InvalidData, msg));
                 }
 
@@ -1362,7 +1377,10 @@ impl Preset {
                     - data_pos as i64
                     - data_header.data_length_with_header() as i64);
                 if remaining != 0 {
-                    let msg = format!("Modulator {} had {remaining} bytes remaining after data block {data_block_index} starting at {data_pos}", mod_block.mode);
+                    let msg = format!(
+                        "Modulator {} had {remaining} bytes remaining after data block {data_block_index} starting at {data_pos}",
+                        mod_block.mode
+                    );
                     return Err(Error::new(ErrorKind::InvalidData, msg));
                 }
             }
@@ -1370,7 +1388,10 @@ impl Preset {
 
         trace!(
             "data block: generators {:?}, pos {}",
-            gen_blocks.iter().map(|generator| generator.mode).collect::<Vec<_>>(),
+            gen_blocks
+                .iter()
+                .map(|generator| generator.mode)
+                .collect::<Vec<_>>(),
             reader.pos()
         );
         for (gen_index, gen_block) in gen_blocks.iter_mut().enumerate() {
@@ -1382,7 +1403,9 @@ impl Preset {
             let header = reader.read_block_header()?;
             let expected_end_pos = start_pos as usize + header.data_length_with_header();
             if gen_block.mode != GeneratorMode::Blank {
-                trace!("data block: sample player: index {gen_index}, start pos {start_pos}, expected end pos {expected_end_pos}, header {header:?}");
+                trace!(
+                    "data block: sample player: index {gen_index}, start pos {start_pos}, expected end pos {expected_end_pos}, header {header:?}"
+                );
             }
 
             if header.is_used() {
@@ -1412,7 +1435,10 @@ impl Preset {
 
             let remaining = expected_end_pos as i64 - reader.stream_position()? as i64;
             if remaining != 0 {
-                let msg = format!("Sample player data block index {gen_index} had {remaining} bytes remaining at {}", reader.pos());
+                let msg = format!(
+                    "Sample player data block index {gen_index} had {remaining} bytes remaining at {}",
+                    reader.pos()
+                );
                 return Err(Error::new(ErrorKind::InvalidData, msg));
             }
 
@@ -1424,7 +1450,9 @@ impl Preset {
             let header = reader.read_block_header()?;
             let expected_end_pos = start_pos as usize + header.data_length_with_header();
             if gen_block.mode != GeneratorMode::Blank {
-                trace!("data block: wavetable: index {gen_index}, start pos {start_pos}, expected end pos {expected_end_pos}, header {header:?}");
+                trace!(
+                    "data block: wavetable: index {gen_index}, start pos {start_pos}, expected end pos {expected_end_pos}, header {header:?}"
+                );
             }
 
             if header.is_used {
@@ -1440,8 +1468,7 @@ impl Preset {
                 gen_block.wavetable_path = reader.read_string_and_length()?;
                 trace!(
                     "data block: mode wavetable path {:?}, name {:?}",
-                    gen_block.wavetable_path,
-                    gen_block.sample_name
+                    gen_block.wavetable_path, gen_block.sample_name
                 );
 
                 if mode_id == 3 {
@@ -1460,7 +1487,9 @@ impl Preset {
 
             let remaining = expected_end_pos as i64 - reader.stream_position()? as i64;
             if remaining != 0 {
-                let msg = format!("Wavetable data block {gen_index} starting at {start_pos} had {remaining} bytes remaining");
+                let msg = format!(
+                    "Wavetable data block {gen_index} starting at {start_pos} had {remaining} bytes remaining"
+                );
                 return Err(Error::new(ErrorKind::InvalidData, msg));
             }
             reader.skip(remaining)?;
@@ -1511,7 +1540,9 @@ impl Preset {
 
                 let remaining = expected_end_pos as i64 - reader.stream_position()? as i64;
                 if remaining != 0 {
-                    let msg = format!("Curve output data block starting at {start_pos} had {remaining} bytes remaining");
+                    let msg = format!(
+                        "Curve output data block starting at {start_pos} had {remaining} bytes remaining"
+                    );
                     return Err(Error::new(ErrorKind::InvalidData, msg));
                 }
             }
