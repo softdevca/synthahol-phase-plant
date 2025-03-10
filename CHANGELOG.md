@@ -1,6 +1,6 @@
 # 0.3.1
 
-* Update dependencies.
+* Update dependencies and switch to the 2024 edition of Rust.
 
 # 0.3.0
 
